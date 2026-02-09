@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 };
 
 import { Toaster } from 'sonner'
+import { DigitalTwinPanel } from '@/components/digital-twin-panel'
 
 export default function RootLayout({
   children,
@@ -30,6 +31,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <DigitalTwinPanel />
         <Toaster richColors position="top-right" theme="dark" />
       </body>
     </html>

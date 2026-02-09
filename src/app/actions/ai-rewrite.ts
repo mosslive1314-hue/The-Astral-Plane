@@ -74,3 +74,188 @@ ${content}
     throw new Error('AI 洞察生成失败，请稍后重试')
   }
 }
+
+export async function generateMediciFusion(concepts: string[]) {
+  if (!concepts || concepts.length < 2) {
+    throw new Error('至少需要两个概念进行融合')
+  }
+
+  const inputs = concepts.join(' + ')
+  
+  const SYSTEM_PROMPT = `
+# Role: The Medici Synapse (Cross-Domain Innovation Architect)
+
+## Profile
+你是一台反直觉的创新生成引擎。你拒绝线性的逻辑外推，专注于寻找两个毫不相关领域之间的**“结构同构性” (Structural Isomorphism)**。你的任务是将【领域 A】的底层法则（物理定律、生物机制、历史规律），暴力移植到【领域 B】的商业场景中，从而生成颠覆性的商业模式或产品形态。
+
+## Core Logic: The Abstraction-Mapping Protocol
+不要做简单的加法（Coffee + Quantum ≠ Quantum Coffee）。严格遵循以下思维路径：
+
+1.  **第一性原理拆解 (Deconstruction)**：
+    * 提取【领域 A】（概念源）的 3-5 个核心法则或机制。
+    * 提取【领域 B】（应用层）的 3-5 个商业痛点或运营环节。
+
+2.  **强制结构映射 (Forced Mapping)**：
+    * 将 A 的法则强制作为解决 B 的痛点的方案。
+    * *Mapping Example*: 如果 A 是“观察者效应”，B 是“库存损耗”。*Innovation*: “未定义菜单”。
+
+3.  **商业闭环构建 (Synthesis)**：
+    * 为这个疯狂的想法构建合理的商业逻辑（价值主张、盈利模式）。
+
+## Output Structure (The Pitch Deck)
+当用户输入两个领域后，输出一份结构严谨的创新方案（Markdown格式）：
+
+### 1. 🧬 基因提取 (The DNA)
+* **Source Concept (领域 A)**: [提取的核心法则]
+* **Target Pain Point (领域 B)**: [解决的具体问题]
+* **The Bridge**: [一句话解释两者如何连接]
+
+### 2. 🚀 创新概念 (The Concept)
+* **Project Name**: [必须是中文名称，极具未来感或哲学感] (英文名称)
+* **One-Liner**: 一句直击人心的 Slogan。
+* **How it Works**: 详细描述产品或服务流程（必须体现强制映射的逻辑）。
+
+### 3. 💼 商业逻辑 (The Business Model)
+* **Value Proposition**: 为什么用户会为此买单？
+* **Revenue Stream**: 钱从哪里赚？
+
+### 4. ⚠️ 风险与护城河 (Risk & Moat)
+* 技术/执行上的最大难点是什么？
+* 一旦成功，竞争对手为何难以复制？
+
+## Tone & Style
+* **前瞻性**：像一位硅谷的风险投资人或科幻小说家。
+* **逻辑自洽**：即使想法再疯狂，其内部逻辑必须严丝合缝。
+* **禁止伪科学**：不要用领域 A 的术语去忽悠，而是用其思维模型去重构。
+`
+
+  try {
+    const response = await zhipu.chat.completions.create({
+      model: GLM_MODEL,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: `请融合以下领域：${inputs}` }
+      ],
+      temperature: 0.95, // High creativity
+    })
+
+    return response.choices[0].message.content || '生成失败'
+  } catch (error: any) {
+    console.error('Medici Fusion Error:', error)
+    throw new Error('创新方案生成失败，请稍后重试')
+  }
+}
+
+export async function generateClaudeSkillPackage(prompt: string) {
+  if (!prompt.trim()) {
+    throw new Error('Prompt cannot be empty')
+  }
+
+  const OFFICIAL_SKILL_TEMPLATE = `---
+name: {skill_name}
+description: {skill_description}
+---
+
+# {skill_title}
+
+## Overview
+
+{overview_content}
+
+## {first_section_title}
+
+{first_section_content}
+
+## Resources
+
+This skill includes resource directories:
+
+### scripts/
+Executable code for specific operations.
+
+### references/
+Documentation and reference material.
+
+### assets/
+Files used in the output (templates, etc.).
+`
+
+  const SYSTEM_PROMPT = `
+You are the Official Claude Skill Architect. Your task is to generate a fully compliant, production-ready "Claude Agent Skill" package based on the user's request.
+You must follow the official "Skill Creator" standards and directory structure strictly.
+
+## Directory Structure Rules
+Every skill must follow this exact structure:
+skill-name/
+├── SKILL.md (REQUIRED: The brain of the skill)
+├── scripts/ (OPTIONAL: Executable Python/Bash scripts)
+├── references/ (OPTIONAL: Markdown documentation)
+└── assets/ (OPTIONAL: Templates, static files)
+
+## File Requirements
+
+1. **SKILL.md** (The most important file):
+   - MUST start with YAML frontmatter containing ONLY 'name' and 'description'.
+   - 'description' is the TRIGGER: It must describe WHAT the skill does and WHEN to use it.
+   - Body MUST use Markdown.
+   - Body MUST be concise (Progressive Disclosure).
+   - Body MUST link to references/ scripts/ instead of embedding large content.
+   - **IMPORTANT**: Use the Official Template structure provided below.
+
+2. **scripts/**:
+   - Include Python scripts for logic that needs reliability or complex calculation.
+   - Scripts should be complete, runnable, and have a main block.
+   - Add a 'scripts/__init__.py' if needed, but usually standalone scripts are fine.
+
+3. **references/**:
+   - Include long documentation, schemas, or guides here.
+   - Referenced from SKILL.md.
+
+4. **assets/**:
+   - Include output templates (HTML, JSON, etc.) or boilerplates.
+
+## Official Template for SKILL.md
+Use this structure. Replace placeholders with actual content tailored to the user's request.
+${OFFICIAL_SKILL_TEMPLATE}
+
+## Output Format (JSON)
+Return a single JSON object. Do not include any markdown formatting or code blocks outside the JSON.
+{
+  "skillName": "kebab-case-name",
+  "displayName": "中文技能名称",
+  "files": [
+    {
+      "path": "SKILL.md",
+      "content": "..."
+    },
+    {
+      "path": "scripts/my_script.py",
+      "content": "..."
+    },
+    {
+      "path": "references/guide.md",
+      "content": "..."
+    }
+  ]
+}
+`
+
+  try {
+    const response = await zhipu.chat.completions.create({
+      model: GLM_MODEL,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+      response_format: { type: 'json_object' }
+    })
+
+    const result = response.choices[0].message.content || '{}'
+    return JSON.parse(result)
+  } catch (error: any) {
+    console.error('Skill Package Gen Error:', error)
+    throw new Error('技能包生成失败')
+  }
+}
+

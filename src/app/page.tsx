@@ -1,18 +1,16 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Navigation } from '@/components/navigation'
 import { useAuthStore } from '@/store/auth'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { StatCard } from '@/components/ui/stat-card'
-import { mockSkills } from '@/lib/mock-data'
 import { getUserInfo } from '@/lib/oauth'
 import { syncUser } from '@/app/actions/auth'
-import { TrendingUp, Sparkles, Users, Activity, ArrowRight } from 'lucide-react'
 import { supabase } from '@/lib/database'
+import { ResonanceEngine } from '@/components/resonance-engine'
+import { MarketTicker } from '@/components/dashboard/market-ticker'
+import { ShieldCheck, Fingerprint, ArrowLeftRight, Handshake } from 'lucide-react'
 
 function HomePageContent() {
   const router = useRouter()
@@ -20,52 +18,11 @@ function HomePageContent() {
   const { isAuthenticated, setTokens, setUser, setAgent } = useAuthStore()
   const [checkedUrlParams, setCheckedUrlParams] = useState(false)
   const [isReady, setIsReady] = useState(false)
-  const [skills, setSkills] = useState<any[]>([])
-
-  useEffect(() => {
-    // 获取热门技能
-    const fetchHotSkills = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('market_skills')
-          .select(`
-            id,
-            current_price,
-            skill:skills (
-              id,
-              name,
-              category,
-              description,
-              rarity
-            )
-          `)
-          .eq('status', 'active')
-          .limit(3)
-          
-        if (data) {
-          const mappedSkills = data.map((item: any) => ({
-            id: item.id,
-            name: item.skill.name,
-            category: item.skill.category,
-            description: item.skill.description,
-            rarity: item.skill.rarity,
-            currentPrice: item.current_price
-          }))
-          setSkills(mappedSkills)
-        }
-      } catch (error) {
-        console.error('Failed to fetch skills:', error)
-      }
-    }
-    
-    fetchHotSkills()
-  }, [])
 
   useEffect(() => {
     // 首先检查 URL 中是否有 token（从 OAuth 回调过来）
     const accessToken = searchParams.get('access_token')
     const refreshToken = searchParams.get('refresh_token')
-    const demoMode = searchParams.get('demo_mode')
 
     if (accessToken && refreshToken) {
       // 设置 tokens
@@ -79,29 +36,20 @@ function HomePageContent() {
       // 获取用户信息并创建/更新 Agent
       const initializeUser = async () => {
         try {
-          console.log('[Auth] Fetching user info...')
           const userInfo = await getUserInfo(accessToken)
-          console.log('[Auth] User info received:', userInfo)
-
-          // 设置用户基本信息
           setUser({
             id: userInfo.id,
             nickname: userInfo.nickname,
             avatar: userInfo.avatar,
-            shades: [], // 稍后可以从 API 获取
+            shades: [],
           })
 
-          // 创建或更新用户和 Agent
-          console.log('[Auth] Creating/updating user and agent...')
           const { user, agent } = await syncUser(userInfo.id, {
             nickname: userInfo.nickname,
             avatar: userInfo.avatar,
             shades: [],
           })
 
-          console.log('[Auth] Agent loaded:', agent)
-
-          // 设置 Agent 信息
           setAgent({
             id: agent.id,
             userId: user.id,
@@ -110,25 +58,19 @@ function HomePageContent() {
             coins: agent.coins,
             creditScore: agent.credit_score,
             avatar: agent.avatar || undefined,
-            skills: [], // 初始为空，可以从数据库加载
-            achievements: [], // 初始为空，可以从数据库加载
+            skills: [],
+            achievements: [],
           })
-
-          console.log('[Auth] User initialization complete!')
         } catch (error) {
           console.error('[Auth] Failed to initialize user:', error)
-          // 即使失败也继续，但记录错误
         }
       }
 
       initializeUser()
-
-      // 清除 URL 参数（重新加载页面）
       router.replace('/')
       return
     }
 
-    // 标记已完成 URL 参数检查
     setCheckedUrlParams(true)
   }, [router, searchParams, setTokens, setUser, setAgent])
 
@@ -141,7 +83,6 @@ function HomePageContent() {
     }
   }, [checkedUrlParams, isAuthenticated, router])
 
-  // Only redirect to login after checking URL params
   if (!checkedUrlParams) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
@@ -153,144 +94,92 @@ function HomePageContent() {
     )
   }
 
-  if (!isAuthenticated) {
-    return null
-  }
-
-  if (!isReady) {
-    return null
-  }
+  if (!isAuthenticated) return null
+  if (!isReady) return null
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col">
       <Navigation />
+      
+      <div className="flex-1 max-w-7xl mx-auto px-4 pt-24 pb-12 w-full flex flex-col gap-8">
+        {/* Hero Section: Resonance Engine (Unified Entry) */}
+        <div className="w-full flex-1 flex flex-col items-center justify-center space-y-8 min-h-[400px] -mt-16">
+          <div className="text-center space-y-4 max-w-4xl relative">
+            {/* Background Decor */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-purple-500/20 blur-[100px] rounded-full opacity-30 pointer-events-none" />
+            
+            <h1 className="relative text-8xl font-bold text-white tracking-tight pb-2 font-sans">
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-300 via-white to-purple-300 animate-gradient">
+                灵波
+              </span>
+            </h1>
+            <p className="relative text-xl text-zinc-300 font-light tracking-wide">
+              广播灵感之波 在共振中迸发全新的灵光
+            </p>
+          </div>
+          
+          <ResonanceEngine />
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Hero Section */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">
-            欢迎来到 AgentCraft
-          </h1>
-          <p className="text-zinc-400 text-lg">
-            A2A 技能交易与创新平台 - 让 AI Agent 通过技能组合产生创新突破
-          </p>
-        </div>
+          {/* Joint Drive Section (Powered by Second Me & ToWow) */}
+          <div className="w-full flex justify-center pt-12 pb-4 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
+            <div className="flex items-center gap-2 sm:gap-4 bg-black/40 backdrop-blur-xl border border-white/5 px-4 sm:px-8 py-3 rounded-2xl hover:border-purple-500/20 transition-all shadow-2xl hover:shadow-[0_0_40px_rgba(147,51,234,0.1)] group">
+              
+              {/* Text: 由 */}
+              <span className="text-zinc-600 font-mono text-xs select-none">由</span>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <StatCard
-            label="活跃 Agent"
-            value="1,234"
-            icon={<Users className="w-5 h-5" />}
-            trend={{ value: 12, isPositive: true }}
-          />
-          <StatCard
-            label="技能总数"
-            value={mockSkills.length}
-            icon={<Sparkles className="w-5 h-5" />}
-            trend={{ value: 8, isPositive: true }}
-          />
-          <StatCard
-            label="今日交易"
-            value="456"
-            icon={<Activity className="w-5 h-5" />}
-            trend={{ value: 23, isPositive: true }}
-          />
-          <StatCard
-            label="美帝奇发现"
-            value="89"
-            icon={<TrendingUp className="w-5 h-5" />}
-            trend={{ value: 15, isPositive: true }}
-          />
-        </div>
+              {/* Second Me Block */}
+              <Link href="https://home.second.me/" target="_blank" className="flex items-center gap-3 hover:bg-white/5 p-2 rounded-xl transition-all cursor-pointer group/item">
+                 <div className="w-10 h-10 rounded-lg overflow-hidden shadow-lg group-hover/item:scale-110 transition-transform bg-white/5 relative">
+                    <img 
+                      src="/images/secondme-logo.png" 
+                      alt="Second Me" 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                         e.currentTarget.style.display = 'none';
+                         e.currentTarget.parentElement?.classList.add('bg-gradient-to-br', 'from-blue-600', 'to-cyan-600', 'flex', 'items-center', 'justify-center');
+                         const icon = document.createElement('div');
+                         icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-fingerprint"><path d="M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M9 6.8a6 6 0 0 1 9 5.2c0 .47 0 1.17-.02 2"/></svg>';
+                         e.currentTarget.parentElement?.appendChild(icon);
+                      }}
+                    />
+                 </div>
+                 <div className="flex flex-col">
+                    <span className="text-sm font-bold text-white leading-none mb-1 group-hover/item:text-blue-300 transition-colors">世另我</span>
+                    <span className="text-[10px] text-zinc-500 font-mono scale-90 origin-left uppercase tracking-wider">数字孪生</span>
+                 </div>
+              </Link>
 
-        {/* Quick Access */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* 技能市场 */}
-          <Card className="group hover:border-purple-500/30 transition-all cursor-pointer" onClick={() => router.push('/market')}>
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500">
-                  <TrendingUp className="w-6 h-6 text-white" />
-                </div>
-                <Badge variant="category">热门</Badge>
+              {/* Connection Icon */}
+              <div className="text-zinc-700 px-1 sm:px-2">
+                 <Handshake className="w-5 h-5 opacity-60" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">技能市场</h3>
-              <p className="text-zinc-400 text-sm mb-4">
-                浏览、购买和租赁各种技能，提升你的 Agent 能力
-              </p>
-              <div className="flex items-center gap-2 text-purple-400">
-                <span className="text-sm font-medium">立即探索</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* 美帝奇效应 */}
-          <Card className="group hover:border-amber-500/30 transition-all cursor-pointer" onClick={() => router.push('/medici')}>
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500">
-                  <Sparkles className="w-6 h-6 text-white" />
-                </div>
-                <Badge variant="rarity" rarity="legendary">创新</Badge>
-              </div>
-              <h3 className="text-xl font-bold text-white mb-2">美帝奇效应</h3>
-              <p className="text-zinc-400 text-sm mb-4">
-                跨域技能组合，发现意想不到的创新突破
-              </p>
-              <div className="flex items-center gap-2 text-amber-400">
-                <span className="text-sm font-medium">开始实验</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </CardContent>
-          </Card>
+              {/* ToWow Block */}
+              <Link href="https://towow.net" target="_blank" className="flex items-center gap-3 hover:bg-white/5 p-2 rounded-xl transition-all cursor-pointer group/item">
+                 <div className="w-10 h-10 rounded-lg overflow-hidden shadow-lg group-hover/item:scale-110 transition-transform bg-white/5 relative">
+                    <img 
+                      src="/images/towow-logo.png" 
+                      alt="ToWow" 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                         e.currentTarget.style.display = 'none';
+                         e.currentTarget.parentElement?.classList.add('bg-gradient-to-br', 'from-emerald-500', 'to-purple-600', 'flex', 'items-center', 'justify-center');
+                         const icon = document.createElement('div');
+                         icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shield-check"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>';
+                         e.currentTarget.parentElement?.appendChild(icon);
+                      }}
+                    />
+                 </div>
+                 <div className="flex flex-col">
+                    <span className="text-sm font-bold text-white leading-none mb-1 group-hover/item:text-emerald-300 transition-colors">通爻</span>
+                    <span className="text-[10px] text-zinc-500 font-mono scale-90 origin-left">需求触发子网 · 价值自然生长</span>
+                 </div>
+              </Link>
 
-          {/* 我的 Agent */}
-          <Card className="group hover:border-blue-500/30 transition-all cursor-pointer" onClick={() => router.push('/profile')}>
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500">
-                  <Users className="w-6 h-6 text-white" />
-                </div>
-                <Badge variant="default">个人</Badge>
-              </div>
-              <h3 className="text-xl font-bold text-white mb-2">我的 Agent</h3>
-              <p className="text-zinc-400 text-sm mb-4">
-                查看你的 Agent 信息、技能树和成就
-              </p>
-              <div className="flex items-center gap-2 text-blue-400">
-                <span className="text-sm font-medium">查看详情</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              {/* Text: 共同驱动 */}
+              <span className="text-zinc-600 font-mono text-xs select-none">共同驱动</span>
 
-        {/* Hot Skills */}
-        <div className="mt-8">
-          <h2 className="text-2xl font-bold text-white mb-4">热门技能</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {skills.slice(0, 3).map(skill => (
-              <Card key={skill.id} className="hover:border-purple-500/30 transition-all">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="font-semibold text-white">{skill.name}</h3>
-                      <p className="text-xs text-zinc-500">{skill.category}</p>
-                    </div>
-                    <Badge variant="rarity" rarity={skill.rarity} className="text-xs">
-                      {skill.rarity}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-zinc-400 mb-3">{skill.description}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-amber-400 font-semibold">💰 {skill.currentPrice.toLocaleString()}</span>
-                    <span className="text-xs text-green-400">↑ 2.5%</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+            </div>
           </div>
         </div>
       </div>

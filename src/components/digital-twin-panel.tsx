@@ -93,8 +93,8 @@ export function DigitalTwinPanel() {
             <div className="flex items-center gap-2">
               <Button 
                 variant="ghost" 
-                size="icon" 
-                className="h-6 w-6 text-zinc-500 hover:text-white"
+                size="sm" 
+                className="h-6 w-6 text-zinc-500 hover:text-white p-0"
                 onClick={fetchShades}
                 disabled={isRefreshing}
               >
@@ -186,8 +186,16 @@ export function DigitalTwinPanel() {
                   )
                 })
               ) : (
-                <div className="text-xs text-zinc-600 p-2 text-center border border-dashed border-zinc-800 rounded">
-                  前往 Second Me 创建分身以激活 Buff
+                <div className="text-xs text-zinc-600 p-2 text-center border border-dashed border-zinc-800 rounded flex flex-col gap-2">
+                  <span>暂无激活的共鸣</span>
+                  <a 
+                    href="https://second.me" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-purple-400 hover:text-purple-300 underline"
+                  >
+                    前往 Second Me 创建分身以激活
+                  </a>
                 </div>
               )}
             </div>

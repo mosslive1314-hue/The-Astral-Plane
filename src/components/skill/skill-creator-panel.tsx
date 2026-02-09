@@ -1,0 +1,278 @@
+'use client'
+
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Textarea } from '@/components/ui/textarea'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { toast } from 'sonner'
+import { 
+  Loader2, Download, Upload, FileCode, Folder, File, 
+  Package, Sparkles, Store, Save
+} from 'lucide-react'
+import { generateClaudeSkillPackage } from '@/app/actions/ai-rewrite'
+import JSZip from 'jszip'
+import { useAuthStore } from '@/store/auth'
+import { createNote } from '@/app/actions/notes'
+
+type SkillFile = {
+  path: string
+  content: string
+}
+
+type SkillPackage = {
+  skillName: string
+  displayName?: string
+  files: SkillFile[]
+}
+
+export function SkillCreatorPanel() {
+  const { agent } = useAuthStore()
+  const [prompt, setPrompt] = useState('')
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [skillPackage, setSkillPackage] = useState<SkillPackage | null>(null)
+  const [selectedFile, setSelectedFile] = useState<SkillFile | null>(null)
+
+  const handleGenerate = async () => {
+    if (!prompt.trim()) return
+
+    try {
+      setIsGenerating(true)
+      const result = await generateClaudeSkillPackage(prompt)
+      setSkillPackage(result)
+      // Select the first file (usually SKILL.md) by default
+      if (result.files && result.files.length > 0) {
+        setSelectedFile(result.files[0])
+      }
+      toast.success('技能生成成功！')
+    } catch (error) {
+      console.error(error)
+      toast.error('技能生成失败')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const handleDownload = async () => {
+    if (!skillPackage) return
+
+    try {
+      const zip = new JSZip()
+      const folder = zip.folder(skillPackage.skillName)
+
+      if (!folder) return
+
+      skillPackage.files.forEach(file => {
+        folder.file(file.path, file.content)
+      })
+
+      const content = await zip.generateAsync({ type: 'blob' })
+      const url = URL.createObjectURL(content)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${skillPackage.skillName}.skill`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      
+      toast.success('技能包已下载！')
+    } catch (error) {
+      console.error(error)
+      toast.error('压缩文件失败')
+    }
+  }
+
+  const handleSave = async () => {
+    if (!skillPackage || !agent?.id) return
+
+    try {
+      const title = skillPackage.displayName || skillPackage.skillName
+      
+      await createNote(agent.id, {
+        title: `技能: ${title}`,
+        content: JSON.stringify(skillPackage, null, 2),
+        category: 'skill',
+        tags: ['skill', 'claude-code', skillPackage.skillName]
+      })
+      toast.success('技能已保存到心智资产库！')
+    } catch (error) {
+      console.error(error)
+      toast.error('保存失败')
+    }
+  }
+
+  const handleListMarket = async () => {
+    if (!skillPackage || !agent?.id) return
+
+    try {
+      const title = skillPackage.displayName || skillPackage.skillName
+      
+      await createNote(agent.id, {
+        title: `技能: ${title}`,
+        content: JSON.stringify(skillPackage, null, 2),
+        category: 'skill',
+        tags: ['skill', 'claude-code', skillPackage.skillName, 'published', 'market']
+      })
+      toast.success('技能已上架到市场！')
+    } catch (error) {
+      console.error(error)
+      toast.error('上架失败')
+    }
+  }
+
+  return (
+    <div className="h-full w-full flex flex-col">
+      <div className="mb-4 shrink-0">
+        <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-1">
+          <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500">
+            <Package className="w-4 h-4 text-white" />
+          </div>
+          Claude 官方技能生成器
+        </h2>
+        <p className="text-zinc-400 text-sm">
+          基于官方范式构建标准的 Claude Agent 技能包 (Skill Package)。
+        </p>
+      </div>
+
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
+        
+        {/* LEFT: Controls & File Tree */}
+        <div className="space-y-4 flex flex-col h-full overflow-hidden">
+          {/* Input Card */}
+          <Card className="bg-black/20 border-white/10 backdrop-blur-sm shrink-0">
+            <CardContent className="p-4 space-y-4">
+              <div>
+                <label className="text-xs text-zinc-400 mb-2 block">技能描述 (Prompt)</label>
+                <Textarea 
+                  placeholder="描述你想创建的技能 (例如: '一个用于提取财报 PDF 中表格数据的分析工具')..."
+                  className="bg-white/5 border-white/10 text-white min-h-[80px] text-sm"
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                />
+              </div>
+              <Button 
+                onClick={handleGenerate} 
+                disabled={isGenerating || !prompt.trim()}
+                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    正在构建架构...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    生成技能包
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* File Tree */}
+          <Card className="flex-1 bg-black/20 border-white/10 backdrop-blur-sm flex flex-col min-h-0 overflow-hidden">
+            <div className="p-3 border-b border-white/10 flex items-center justify-between shrink-0">
+              <span className="text-sm font-semibold text-zinc-300">文件结构</span>
+              {skillPackage && (
+                <span className="text-xs text-blue-400 font-mono">{skillPackage.skillName}</span>
+              )}
+            </div>
+            <ScrollArea className="flex-1 p-2">
+              {!skillPackage ? (
+                <div className="h-full flex flex-col items-center justify-center text-zinc-500 gap-2 min-h-[100px]">
+                  <Folder className="w-8 h-8 opacity-20" />
+                  <span className="text-xs">暂无生成内容</span>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {skillPackage.files.map((file, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedFile(file)}
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+                        selectedFile === file 
+                          ? 'bg-blue-500/20 text-blue-300' 
+                          : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'
+                      }`}
+                    >
+                      <FileCode className="w-4 h-4 shrink-0" />
+                      <span className="truncate text-left">{file.path}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+            
+            {/* Actions */}
+            {skillPackage && (
+              <div className="p-3 border-t border-white/10 grid grid-cols-2 gap-2 shrink-0">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="border-white/10 hover:bg-white/5 text-zinc-300"
+                  onClick={handleDownload}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  下载 .skill
+                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button 
+                    size="sm"
+                    className="bg-emerald-600/80 hover:bg-emerald-600 text-white px-2"
+                    onClick={handleSave}
+                  >
+                    <Save className="w-4 h-4 mr-1" />
+                    保存
+                  </Button>
+                  <Button 
+                    size="sm"
+                    className="bg-amber-600/80 hover:bg-amber-600 text-white px-2"
+                    onClick={handleListMarket}
+                  >
+                    <Store className="w-4 h-4 mr-1" />
+                    上架
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Card>
+        </div>
+
+        {/* RIGHT: Editor / Preview */}
+        <div className="lg:col-span-2 h-full flex flex-col overflow-hidden">
+          <Card className="h-full bg-[#1e1e1e] border-white/10 backdrop-blur-sm flex flex-col overflow-hidden">
+            <div className="p-3 border-b border-white/5 flex items-center justify-between bg-white/5 shrink-0">
+              <div className="flex items-center gap-2">
+                <File className="w-4 h-4 text-zinc-400" />
+                <span className="text-sm font-mono text-zinc-300">
+                  {selectedFile ? selectedFile.path : '预览'}
+                </span>
+              </div>
+              {selectedFile && (
+                <div className="text-xs text-zinc-500">
+                  {selectedFile.content.length} 字符
+                </div>
+              )}
+            </div>
+            
+            <ScrollArea className="flex-1">
+              {selectedFile ? (
+                <pre className="p-4 text-sm font-mono text-zinc-300 leading-relaxed whitespace-pre-wrap">
+                  {selectedFile.content}
+                </pre>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-zinc-600 gap-4 min-h-[200px]">
+                  <Package className="w-16 h-16 opacity-20" />
+                  <p>选择左侧文件以预览内容</p>
+                </div>
+              )}
+            </ScrollArea>
+          </Card>
+        </div>
+
+      </div>
+    </div>
+  )
+}

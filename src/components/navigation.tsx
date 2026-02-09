@@ -4,18 +4,16 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
-import { TrendingUp, User, Sparkles, Home, LogOut, MessageSquare, FileText, CheckCircle, LineChart, Zap } from 'lucide-react'
+import { User, Command, ShoppingBag, Wand2, LogOut, Coins, Shield, Star, Briefcase } from 'lucide-react'
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
+
+import { MarketTicker, CREATION_TICKER_ITEMS, VALUE_TICKER_ITEMS } from '@/components/dashboard/market-ticker'
 
 const navItems = [
-  { href: '/', label: '首页', icon: Home },
-  { href: '/market', label: '技能市场', icon: TrendingUp },
-  { href: '/medici', label: '美帝奇效应', icon: Sparkles },
-  { href: '/futures', label: '期货市场', icon: LineChart },
-  { href: '/tasks', label: '任务系统', icon: CheckCircle },
-  { href: '/chat', label: '聊天', icon: MessageSquare },
-  { href: '/notes', label: '笔记', icon: FileText },
-  { href: '/act', label: 'Act', icon: Zap },
-  { href: '/profile', label: '我的 Agent', icon: User },
+  { href: '/', label: '灵波', icon: Command },
+  { href: '/studio', label: '灵境', icon: Wand2 },
+  { href: '/lingxu', label: '灵墟', icon: ShoppingBag },
+  { href: '/profile', label: '灵体', icon: User },
 ]
 
 export function Navigation() {
@@ -25,96 +23,107 @@ export function Navigation() {
   if (!isAuthenticated) return null
 
   return (
-    <nav className="border-b border-white/10 bg-black/20 backdrop-blur-xl sticky top-0 z-10">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center gap-2 text-xl font-bold text-white">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              AgentCraft
-            </Link>
+    <>
+      {/* Top Bar: Clean Brand Header with Navigation */}
+      <nav className="border-b border-white/5 bg-black/20 backdrop-blur-xl sticky top-0 z-50 h-16">
+        <div className="w-full h-full flex items-center justify-center relative overflow-hidden">
+          
+          {/* Left Navigation Links (LingBo, LingXu) */}
+          <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 top-1/2 flex items-center gap-16 pointer-events-none">
+             <div className="flex gap-8 pointer-events-auto pr-32">
+                <Link href="/" className={cn("text-xs font-bold tracking-widest hover:text-purple-400 transition-colors", pathname === '/' ? "text-white" : "text-zinc-500")}>灵波</Link>
+                <Link href="/lingxu" className={cn("text-xs font-bold tracking-widest hover:text-purple-400 transition-colors", pathname === '/lingxu' ? "text-white" : "text-zinc-500")}>灵墟</Link>
+             </div>
+             <div className="flex gap-8 pointer-events-auto pl-32">
+                <Link href="/studio" className={cn("text-xs font-bold tracking-widest hover:text-purple-400 transition-colors", pathname === '/studio' ? "text-white" : "text-zinc-500")}>灵境</Link>
+                
+                {/* LingTi with Integrated Profile Hover */}
+                <HoverCard openDelay={0} closeDelay={200}>
+                  <HoverCardTrigger asChild>
+                    <Link href="/profile" className={cn("text-xs font-bold tracking-widest hover:text-purple-400 transition-colors cursor-pointer", pathname === '/profile' ? "text-white" : "text-zinc-500")}>
+                      灵体
+                    </Link>
+                  </HoverCardTrigger>
+                  <HoverCardContent side="bottom" align="end" className="w-80 bg-black/90 backdrop-blur-xl border-white/10 text-white p-0 overflow-hidden shadow-2xl mt-4">
+                     {/* Integrated Profile Info */}
+                     <div className="p-4 bg-gradient-to-br from-purple-900/50 to-blue-900/50 border-b border-white/10">
+                       <div className="flex items-center gap-3">
+                         <div className="w-12 h-12 rounded-full border border-white/20 overflow-hidden bg-black">
+                            {user?.avatar ? (
+                              <img src={user.avatar} alt={user.nickname} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-white text-lg font-bold bg-zinc-800">
+                                {user?.nickname?.charAt(0)?.toUpperCase() || 'U'}
+                              </div>
+                            )}
+                         </div>
+                         <div>
+                           <div className="font-bold text-lg">{user?.nickname}</div>
+                           <div className="text-xs text-zinc-400">{agent?.name}</div>
+                         </div>
+                       </div>
+                     </div>
+                     
+                     <div className="p-4 space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] text-zinc-500 uppercase flex items-center gap-1"><Coins className="w-3 h-3" /> 总资产</span>
+                            <span className="text-amber-400 font-mono font-bold">{agent?.coins?.toLocaleString() || 0}</span>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] text-zinc-500 uppercase flex items-center gap-1"><Star className="w-3 h-3" /> 等级</span>
+                            <span className="text-purple-400 font-mono font-bold">Lv.{agent?.level || 1}</span>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] text-zinc-500 uppercase flex items-center gap-1"><Shield className="w-3 h-3" /> 信用分</span>
+                            <span className="text-emerald-400 font-mono font-bold">{agent?.creditScore || 0}</span>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] text-zinc-500 uppercase flex items-center gap-1"><Briefcase className="w-3 h-3" /> 技能数</span>
+                            <span className="text-blue-400 font-mono font-bold">{agent?.skills?.length || 0}</span>
+                          </div>
+                        </div>
+                     </div>
 
-            <div className="hidden lg:flex items-center gap-1">
-              {navItems.map((item) => {
-                const Icon = item.icon
-                const isActive = pathname === item.href
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                      isActive
-                        ? 'bg-purple-500/20 text-purple-400'
-                        : 'text-zinc-400 hover:text-white hover:bg-white/5'
-                    )}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {item.label}
-                  </Link>
-                )
-              })}
-            </div>
+                     <div className="p-2 border-t border-white/10 bg-white/5">
+                       <button 
+                         onClick={logout}
+                         className="w-full flex items-center justify-center gap-2 text-xs text-red-400 hover:text-white hover:bg-red-500/20 py-2 rounded transition-colors"
+                       >
+                         <LogOut className="w-3.5 h-3.5" />
+                         断开连接 (Logout)
+                       </button>
+                     </div>
+                  </HoverCardContent>
+                </HoverCard>
+             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            {agent && (
-              <div className="hidden md:flex items-center gap-3 text-sm">
-                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/30">
-                  <span className="text-amber-400">💰</span>
-                  <span className="text-amber-300 font-semibold">{agent.coins.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-500/30">
-                  <span className="text-purple-400">⭐</span>
-                  <span className="text-purple-300 font-semibold">Lv.{agent.level}</span>
-                </div>
-              </div>
-            )}
-            {user && (
-              <div className="hidden sm:flex items-center gap-2 text-sm text-zinc-400">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
-                  {user.nickname?.charAt(0)?.toUpperCase() || 'U'}
-                </div>
-                <span className="max-w-[100px] truncate">{user.nickname}</span>
-              </div>
-            )}
-            <button
-              onClick={logout}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">登出</span>
-            </button>
-          </div>
-        </div>
-      </div>
+          {/* Center Brand */}
+          <Link href="/" className="flex flex-col items-center group cursor-pointer z-20">
+            <span className="text-3xl font-bold tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-purple-300 via-white to-purple-300 group-hover:scale-105 transition-transform">
+              灵界
+            </span>
+            <span className="text-[10px] text-zinc-500 font-mono tracking-[0.2em] group-hover:text-zinc-400 transition-colors uppercase">
+              World of Inspiration & Agent
+            </span>
+          </Link>
 
-      {/* 移动端导航 */}
-      <div className="lg:hidden border-t border-white/10 px-4 py-2 overflow-x-auto">
-        <div className="flex items-center gap-1 min-w-max">
-          {navItems.map((item) => {
-            const Icon = item.icon
-            const isActive = pathname === item.href
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  'flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap',
-                  isActive
-                    ? 'bg-purple-500/20 text-purple-400'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/5'
-                )}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {item.label}
-              </Link>
-            )
-          })}
+        </div>
+      </nav>
+
+      {/* Second Bar: Split Tickers (Below Navigation) */}
+      <div className="w-full h-10 border-b border-white/5 bg-black/10 backdrop-blur-md flex items-center relative z-40">
+        {/* Left Ticker: Market/Value (Moves Left -> Right) */}
+        <div className="flex-1 h-full flex items-center overflow-hidden mask-linear-fade-right border-r border-white/5">
+            <MarketTicker items={VALUE_TICKER_ITEMS} direction="right" speed={50} />
+        </div>
+        
+        {/* Right Ticker: Creation (Moves Right -> Left) */}
+        <div className="flex-1 h-full flex items-center overflow-hidden mask-linear-fade-left border-l border-white/5">
+            <MarketTicker items={CREATION_TICKER_ITEMS} direction="left" speed={60} />
         </div>
       </div>
-    </nav>
+    </>
   )
 }
