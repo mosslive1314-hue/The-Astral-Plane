@@ -29,7 +29,60 @@ export default function MarketPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState('market')
 
-  // ... existing useEffects and handlers (fetchSkills, handleBuy, handleRent)
+  const filteredSkills = skills.filter(skill => {
+    const matchesSearch = searchQuery === '' || 
+      skill.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      skill.description.toLowerCase().includes(searchQuery.toLowerCase())
+    
+    const matchesFilter = filter === 'all' || 
+      (filter === 'sale' && !skill.isRental) ||
+      (filter === 'rental' && skill.isRental)
+    
+    const matchesCategory = categoryFilter === 'all' || skill.category === categoryFilter
+    
+    return matchesSearch && matchesFilter && matchesCategory
+  })
+
+  useEffect(() => {
+    async function fetchSkills() {
+      try {
+        const { data, error } = await supabase
+          .from('skills')
+          .select('*')
+          .order('created_at', { ascending: false })
+        
+        if (error) throw error
+        
+        setSkills(data || [])
+      } catch (err) {
+        console.error('Failed to fetch skills:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchSkills()
+  }, [])
+
+  const handleBuy = async (skill: MarketSkill) => {
+    try {
+      await buySkill(skill.id)
+      toast.success('技能购买成功！')
+    } catch (error) {
+      toast.error('技能购买失败')
+      console.error(error)
+    }
+  }
+
+  const handleRent = async (skill: MarketSkill) => {
+    try {
+      await rentSkill(skill.id)
+      toast.success('技能租赁成功！')
+    } catch (error) {
+      toast.error('技能租赁失败')
+      console.error(error)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col">
