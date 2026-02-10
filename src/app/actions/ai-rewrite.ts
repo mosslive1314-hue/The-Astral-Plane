@@ -31,7 +31,6 @@ export async function generateInsight(content: string, model: string, customCont
     throw new Error('内容不能为空')
   }
 
-  // 基础提示词模板
   const BASE_PROMPT = `
 你是一个擅长跨学科思维的创新顾问。你的任务不是简单重写用户的想法，而是运用特定的思维模型进行"结构映射"，从而产生独特的洞察。
 
@@ -63,7 +62,7 @@ ${content}
       messages: [
         { role: 'user', content: BASE_PROMPT }
       ],
-      temperature: 0.9, // 稍微提高温度以增加多样性
+      temperature: 0.9,
       response_format: { type: 'json_object' }
     })
 
@@ -83,27 +82,27 @@ export async function generateMediciFusion(concepts: string[]) {
   const inputs = concepts.join(' + ')
   
   const SYSTEM_PROMPT = `
-# Role: The Medici Synapse (Cross-Domain Innovation Architect)
+# 角色：美帝奇突触（跨领域创新架构师）
 
-## Profile
-你是一台反直觉的创新生成引擎。你拒绝线性的逻辑外推，专注于寻找两个毫不相关领域之间的**“结构同构性” (Structural Isomorphism)**。你的任务是将【领域 A】的底层法则（物理定律、生物机制、历史规律），暴力移植到【领域 B】的商业场景中，从而生成颠覆性的商业模式或产品形态。
+## 简介
+你是一台反直觉的创新生成引擎。你拒绝线性的逻辑外推，专注于寻找两个毫不相关领域之间的"结构同构性"。你的任务是将【领域 A】的底层法则（物理定律、生物机制、历史规律），暴力移植到【领域 B】的商业场景中，从而生成颠覆性的商业模式或产品形态。
 
-## Core Logic: The Abstraction-Mapping Protocol
-不要做简单的加法（Coffee + Quantum ≠ Quantum Coffee）。严格遵循以下思维路径：
+## 核心逻辑：抽象映射协议
+不要做简单的加法。严格遵循以下思维路径：
 
-1.  **第一性原理拆解 (Deconstruction)**：
+1.  **第一性原理拆解**：
     * 提取【领域 A】（概念源）的 3-5 个核心法则或机制。
     * 提取【领域 B】（应用层）的 3-5 个商业痛点或运营环节。
 
-2.  **强制结构映射 (Forced Mapping)**：
+2.  **强制结构映射**：
     * 将 A 的法则强制作为解决 B 的痛点的方案。
-    * *Mapping Example*: 如果 A 是“观察者效应”，B 是“库存损耗”。*Innovation*: “未定义菜单”。
+    * 映射示例：如果 A 是"观察者效应"，B 是"库存损耗"。创新点："未定义菜单"。
 
-3.  **商业闭环构建 (Synthesis)**：
+3.  **商业闭环构建**：
     * 为这个疯狂的想法构建合理的商业逻辑（价值主张、盈利模式）。
 
-## Output Structure (The Pitch Deck)
-当用户输入两个领域后，输出一份结构严谨的创新方案（Markdown格式，全部使用中文）：
+## 输出结构
+当用户输入两个领域后，输出一份结构严谨的创新方案（Markdown格式，全部使用中文，不要出现任何英文）：
 
 ### 1. 🧬 基因提取
 * **源概念（领域 A）**: [提取的核心法则]
@@ -123,10 +122,15 @@ export async function generateMediciFusion(concepts: string[]) {
 * **技术/执行上的最大难点是什么？**
 * **一旦成功，竞争对手为何难以复制？**
 
-## Tone & Style
+## 语调与风格
 * **前瞻性**：像一位硅谷的风险投资人或科幻小说家。
 * **逻辑自洽**：即使想法再疯狂，其内部逻辑必须严丝合缝。
 * **禁止伪科学**：不要用领域 A 的术语去忽悠，而是用其思维模型去重构。
+
+**重要提示**：
+- 所有输出必须使用中文
+- 不要出现英文单词，除非是必要的专有名词（如 ID、API 等）
+- 标题和内容都必须是中文
 `
 
   try {
@@ -136,7 +140,7 @@ export async function generateMediciFusion(concepts: string[]) {
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: `请融合以下领域：${inputs}` }
       ],
-      temperature: 0.95, // High creativity
+      temperature: 0.95,
     })
 
     return response.choices[0].message.content || '生成失败'
@@ -148,7 +152,7 @@ export async function generateMediciFusion(concepts: string[]) {
 
 export async function generateClaudeSkillPackage(prompt: string) {
   if (!prompt.trim()) {
-    throw new Error('Prompt cannot be empty')
+    throw new Error('提示不能为空')
   }
 
   const OFFICIAL_SKILL_TEMPLATE = `---
@@ -259,7 +263,7 @@ ${OFFICIAL_SKILL_TEMPLATE}
 
 export async function generateProjectTasks(projectContent: string) {
   const SYSTEM_PROMPT = `
-你是一个"项目管理代理"（Project Manager Agent）。你的任务是将高层级项目计划（Markdown 内容）分解为一系列具体的、可执行的任务。
+你是一个"项目管理代理"。你的任务是将高层级项目计划（Markdown 内容）分解为一系列具体的、可执行的任务。
 
 输入：Markdown 格式的项目描述（通常来自美帝奇实验室）。
 输出：包含任务列表的 JSON 对象。
@@ -308,14 +312,12 @@ export async function generateProjectTasks(projectContent: string) {
       return []
     }
 
-    // Validate tasks structure
     const tasks = parsed.tasks || []
     if (!Array.isArray(tasks)) {
       console.error('[ERROR] Invalid tasks format (not an array):', tasks)
       return []
     }
 
-    // Ensure reward is a number
     return tasks.map((t: any) => ({
       ...t,
       reward: typeof t.reward === 'string' ? parseInt(t.reward, 10) || 100 : t.reward,
@@ -324,7 +326,6 @@ export async function generateProjectTasks(projectContent: string) {
 
   } catch (error: any) {
     console.error('Task Gen Error:', error)
-    return [] // Return empty list on error
+    return []
   }
 }
-

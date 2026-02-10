@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ShoppingBag, TrendingUp, LineChart, Search, ScrollText, CheckCircle, Shield, Award, MapPin } from 'lucide-react'
+import { ShoppingBag, TrendingUp, LineChart, Search, ScrollText, CheckCircle, Shield, Award } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
 import { useRouter } from 'next/navigation'
 import { buySkill, rentSkill } from '@/app/actions/market'
@@ -19,12 +19,11 @@ import { NegotiationStatus } from '@/components/negotiation-status'
 import { simulatePriceFluctuation } from '@/lib/mock-data'
 import type { MarketSkill, PricePoint } from '@/types'
 
-// 复用 mock-data 中的辅助函数来生成价格历史
 function generatePriceHistory(basePrice: number, currentPrice: number): PricePoint[] {
   const history: PricePoint[] = []
   const now = Date.now()
   const points = 10
-  const interval = 60000 // 1分钟间隔
+  const interval = 60000
 
   let price = basePrice
   for (let i = 0; i < points; i++) {
@@ -39,7 +38,6 @@ function generatePriceHistory(basePrice: number, currentPrice: number): PricePoi
   return history
 }
 
-// Mock Solutions Data
 const MOCK_SOLUTIONS = [
   {
     id: 'sol_1',
@@ -80,7 +78,7 @@ export default function LingXuPage() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'sale' | 'rental'>('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedSolution, setSelectedSolution] = useState<any>(null) // State for solution details
+  const [selectedSolution, setSelectedSolution] = useState<any>(null)
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -207,7 +205,6 @@ export default function LingXuPage() {
     }
 
     if (confirm(`确定要签约购买 ${solution.title} 吗？价格: ${solution.price} 💰`)) {
-       // 模拟购买过程
        const promise = new Promise((resolve) => setTimeout(resolve, 1500))
        
        toast.promise(promise, {
@@ -235,7 +232,7 @@ export default function LingXuPage() {
       <div className="max-w-7xl mx-auto px-4 py-4 pt-8">
         <div className="mb-2 flex flex-col items-center justify-center text-center">
           <p className="text-zinc-400 max-w-2xl text-base leading-relaxed">
-            <span className="text-zinc-200 font-semibold text-lg block mb-2">“灵感自从诞生后就会变成废墟。”</span>
+            <span className="text-zinc-200 font-semibold text-lg block mb-2">"灵感自从诞生后就会变成废墟。"</span>
             这里是价值的交换之地，也是需求的埋骨之所。<br/>所有的方案、技能与任务都在此交汇。
           </p>
         </div>
@@ -244,11 +241,11 @@ export default function LingXuPage() {
           <TabsList className="bg-black/20 border border-white/10 p-1 mb-8 rounded-xl">
             <TabsTrigger value="market" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white px-8 py-2">
               <ShoppingBag className="w-4 h-4 mr-2" />
-              交易集市 (Marketplace)
+              交易集市
             </TabsTrigger>
             <TabsTrigger value="tasks" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white px-8 py-2">
               <CheckCircle className="w-4 h-4 mr-2" />
-              任务悬赏 (Bounties)
+              任务悬赏
             </TabsTrigger>
           </TabsList>
 
@@ -357,55 +354,12 @@ export default function LingXuPage() {
           </TabsContent>
 
           <TabsContent value="tasks" className="w-full">
-
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-8">
                 <TasksSystem />
               </div>
               <div className="space-y-6">
                 <NegotiationStatus />
-                
-                {/* 信用体系闭环 */}
-                <div className="p-6 bg-gradient-to-br from-purple-900/20 to-black rounded-xl border border-purple-500/20">
-                  <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-purple-400" />
-                    信用与等级体系
-                  </h3>
-                  <div className="space-y-4">
-                    <div className="flex items-start gap-3">
-                      <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
-                        <CheckCircle className="w-3 h-3 text-emerald-400" />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-white">履约提升信用</h4>
-                        <p className="text-[10px] text-zinc-400">每次成功交付任务，信用分 +5~20</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-center w-6 h-4">
-                      <div className="w-0.5 h-full bg-white/10" />
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <div className="w-6 h-6 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0">
-                        <Award className="w-3 h-3 text-purple-400" />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-white">信用解锁等级</h4>
-                        <p className="text-[10px] text-zinc-400">信用分 &gt; 600 解锁 Lv.2 高级任务权限</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-4 pt-4 border-t border-white/5 text-[10px] text-zinc-500 text-center">
-                    高等级 Agent 将获得 Towow 协议的优先共振权
-                  </div>
-                </div>
-
-                <div className="p-4 bg-black/20 rounded-xl border border-white/5">
-                  <h3 className="text-white font-bold mb-2 text-xs">P2P 协议说明</h3>
-                  <p className="text-xs text-zinc-400">
-                    本平台基于 Towow 协商协议。所有任务发布与接取均通过去中心化屏障进行同步，确保无抢跑、无偏见。
-                  </p>
-                </div>
               </div>
             </div>
           </TabsContent>
