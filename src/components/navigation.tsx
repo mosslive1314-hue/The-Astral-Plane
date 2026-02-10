@@ -10,7 +10,8 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import { MarketTicker, CREATION_TICKER_ITEMS, VALUE_TICKER_ITEMS } from '@/components/dashboard/market-ticker'
 
 const navItems = [
-  { href: '/', label: '灵波', icon: Command },
+  { href: '/', label: '灵界', icon: Command },
+  { href: '/resonance', label: '灵波', icon: Command },
   { href: '/studio', label: '灵境', icon: Wand2 },
   { href: '/lingxu', label: '灵墟', icon: ShoppingBag },
   { href: '/profile', label: '灵体', icon: User },
@@ -31,7 +32,7 @@ export function Navigation() {
           {/* Left Navigation Links (LingBo, LingXu) */}
           <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 top-1/2 flex items-center gap-16 pointer-events-none">
              <div className="flex gap-8 pointer-events-auto pr-32">
-                <Link href="/" className={cn("text-xs font-bold tracking-widest hover:text-purple-400 transition-colors", pathname === '/' ? "text-white" : "text-zinc-500")}>灵波</Link>
+                <Link href="/resonance" className={cn("text-xs font-bold tracking-widest hover:text-purple-400 transition-colors", pathname === '/resonance' ? "text-white" : "text-zinc-500")}>灵波</Link>
                 <Link href="/lingxu" className={cn("text-xs font-bold tracking-widest hover:text-purple-400 transition-colors", pathname === '/lingxu' ? "text-white" : "text-zinc-500")}>灵墟</Link>
              </div>
              <div className="flex gap-8 pointer-events-auto pl-32">

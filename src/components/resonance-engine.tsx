@@ -174,9 +174,17 @@ export function ResonanceEngine() {
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-12">
+    <div className="w-full max-w-4xl mx-auto space-y-8 -mt-24">
       {/* LingBo Emitter (灵波发射器) */}
       <div className="relative flex flex-col items-center justify-center">
+        {/* Title */}
+        <h1 className="text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-white to-purple-400/50 mb-2 tracking-tighter select-none">
+           灵 波
+        </h1>
+        <p className="text-zinc-400 mb-8 font-light tracking-widest text-sm uppercase opacity-80">
+           广播灵感直播，在共振中迸发全新的灵光
+        </p>
+
         {/* 动态扩散光圈 (LingBo Effect) */}
         {isBroadcasting && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -267,6 +275,8 @@ export function ResonanceEngine() {
                 className="group relative bg-black/40 border border-white/5 p-4 rounded-xl hover:border-purple-500/50 transition-all cursor-pointer h-full flex flex-col hover:scale-105 hover:shadow-[0_0_30px_rgba(168,85,247,0.2)]"
                 onClick={() => {
                    if(item.type === 'task') router.push('/lingxu')
+                   if(item.type === 'skill') router.push('/lingxu')
+                   if(item.type === 'agent') router.push('/profile') // Or a specific agent profile page
                 }}
               >
                 <div className="absolute top-2 right-2 flex items-center gap-1 text-[10px] font-mono text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">

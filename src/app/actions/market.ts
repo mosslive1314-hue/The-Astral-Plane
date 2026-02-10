@@ -52,9 +52,7 @@ export async function buySkill(
       return { success: false, message: '不能购买自己的商品' }
     }
 
-    // 3. 开始事务处理 (Supabase 不支持直接的事务 API，我们通过顺序执行并手动回滚模拟，或者相信数据库约束)
-    // 这里我们按顺序执行：扣款 -> 加款 -> 转移技能 -> 记录交易 -> 更新市场状态
-
+    // 3. 开始事务处理
     // 3.1 扣除买家金币
     const { error: deductError } = await supabaseAdmin
       .from('agents')
@@ -69,7 +67,6 @@ export async function buySkill(
       amount: price
     })
     
-    // 如果 RPC 不存在，先用普通 update (注意并发问题，但在 Demo 中可接受)
     if (addError) {
        const { data: seller } = await supabaseAdmin.from('agents').select('coins').eq('id', marketItem.seller_id).single()
        if (seller) {
@@ -78,7 +75,6 @@ export async function buySkill(
     }
 
     // 3.3 给予买家技能
-    // 检查是否已拥有
     const { data: existingSkill } = await supabaseAdmin
       .from('agent_skills')
       .select('id')
@@ -104,14 +100,8 @@ export async function buySkill(
       type: 'purchase'
     })
 
-    // 3.5 更新市场条目状态 (如果是租赁，可能不需要下架，这里假设购买是永久的)
-    // 对于非租赁商品，购买后下架
-    // 但为了演示方便，或者是"复制"技能模式，我们可能保留上架状态？
-    // 通常技能市场是"学习"，所以是复制一份。卖家依然拥有技能，且可以继续卖。
-    // 所以这里不更新为 sold，除非是独家转让。
-    // 根据需求，AgentCraft 似乎是复制模式。我们保留 market_skills 状态为 active。
+    // 3.5 更新市场条目状态 (Copy模式不需下架)
     
-    // 更新买家缓存或状态
     revalidatePath('/market')
     revalidatePath('/profile')
 
@@ -172,8 +162,7 @@ export async function rentSkill(
       await supabaseAdmin.from('agents').update({ coins: seller.coins + price }).eq('id', marketItem.seller_id)
     }
 
-    // 3.3 给予临时技能 (这里简化为直接给予技能，不处理过期逻辑，或者记录过期时间)
-    // 检查是否已拥有
+    // 3.3 给予临时技能
     const { data: existingSkill } = await supabaseAdmin
       .from('agent_skills')
       .select('id')
@@ -187,7 +176,6 @@ export async function rentSkill(
         skill_id: marketItem.skill_id,
         level: 1,
         max_level: 5,
-        // 实际项目中应添加 expires_at 字段
       })
     }
 
@@ -212,5 +200,96 @@ export async function rentSkill(
   } catch (error: any) {
     console.error('Rental error:', error)
     return { success: false, message: `交易失败: ${error.message}` }
+  }
+}
+
+/**
+ * 发布技能到市场
+ */
+export async function publishSkillToMarket(
+  agentId: string, 
+  skillData: {
+    name: string,
+    description: string,
+    content: string,
+    price?: number
+  }
+) {
+  try {
+    // 1. 创建或获取基础技能记录 (Skills Table)
+    // 先检查是否已存在同名技能 (简化逻辑)
+    // 实际项目中可能需要更复杂的查重
+    
+    // 生成一个随机价格，如果未提供
+    const basePrice = skillData.price || Math.floor(Math.random() * 500) + 100
+
+    let skillId = ''
+
+    // 尝试查找该 Agent 是否已经创建过这个技能
+    // 这里我们假设 skills 表是全局的，但我们可以通过 name 和 category 来模糊匹配
+    // 为了简单，我们每次都创建一个新的 skill 记录，或者复用
+    // 更好的做法：SkillCreator 生成的包是 "Template"，发布到市场才变成 "Product"
+    
+    const { data: newSkill, error: skillError } = await supabaseAdmin
+      .from('skills')
+      .insert({
+        name: skillData.name,
+        description: skillData.description,
+        category: 'programming', // 默认为编程，或者让 AI 分析
+        rarity: 'rare',
+        base_price: basePrice
+      })
+      .select()
+      .single()
+
+    if (skillError) {
+      // 如果插入失败（可能是名字冲突？），尝试查询
+      console.warn('Skill insert failed, trying to find existing:', skillError)
+      // 这里简化处理：抛出错误
+      throw new Error(`技能创建失败: ${skillError.message}`)
+    }
+    
+    skillId = newSkill.id
+
+    // 2. 给予 Agent 该技能 (作为拥有者)
+    await supabaseAdmin.from('agent_skills').insert({
+      agent_id: agentId,
+      skill_id: skillId,
+      level: 1,
+      max_level: 5
+    })
+
+    // 3. 上架到市场 (Market Skills Table)
+    const { error: marketError } = await supabaseAdmin
+      .from('market_skills')
+      .insert({
+        skill_id: skillId,
+        seller_id: agentId,
+        current_price: basePrice,
+        status: 'active',
+        is_rental: false
+      })
+
+    if (marketError) throw marketError
+
+    // 4. 同时创建心智资产笔记 (备份)
+    await supabaseAdmin.from('notes').insert({
+      agent_id: agentId,
+      title: `技能: ${skillData.name}`,
+      content: skillData.content,
+      tags: ['skill', 'claude-code', skillData.name, 'published', 'market'],
+      category: 'skill',
+      linked_skill_id: skillId
+    })
+
+    revalidatePath('/market')
+    revalidatePath('/studio')
+    revalidatePath('/profile')
+
+    return { success: true, message: '技能已成功发布到市场！' }
+
+  } catch (error: any) {
+    console.error('Publish error:', error)
+    return { success: false, message: `发布失败: ${error.message}` }
   }
 }

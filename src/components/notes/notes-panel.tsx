@@ -4,15 +4,17 @@ import { useState, useEffect } from 'react'
 import { DigitalTwinPanel } from '@/components/digital-twin-panel'
 import { useAuthStore } from '@/store/auth'
 import { useRouter } from 'next/navigation'
-import { getNotes, createNote, deleteNote, type Note } from '@/app/actions/notes'
-import { generateInsight } from '@/app/actions/ai-rewrite'
+import { getNotes, createNote, deleteNote, updateNoteTags, type Note } from '@/app/actions/notes'
+import { generateInsight, generateProjectTasks } from '@/app/actions/ai-rewrite'
+import { createProjectTasks } from '@/app/actions/tasks'
+import { publishSkillToMarket } from '@/app/actions/market'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { 
   Notebook, Plus, Trash2, Tag, Brain, 
-  MessageCircle, Palette, Code, FlaskConical, Sparkles, Wand2, Lightbulb, UserCircle
+  MessageCircle, Palette, Code, FlaskConical, Sparkles, Wand2, Lightbulb, UserCircle, Rocket, Store
 } from 'lucide-react'
 
 // 思维模型定义 (参考 CausalLink)
@@ -175,6 +177,62 @@ export function NotesPanel() {
     if (note.tags?.includes(activeCategory)) return true
     return false
   })
+
+  const handleImplement = async (note: Note) => {
+    if (!agent?.id) return
+    
+    const toastId = toast.loading('正在拆解项目任务...')
+    try {
+      // 1. Generate tasks using AI
+      const tasks = await generateProjectTasks(note.content)
+      
+      if (tasks.length === 0) {
+        toast.error('AI 未能生成有效任务，请重试', { id: toastId })
+        return
+      }
+
+      // 2. Save tasks to DB
+      await createProjectTasks(agent.id, tasks)
+      
+      // 3. Update note tags
+      if (!note.tags?.includes('implemented')) {
+        await updateNoteTags(agent.id, note.id, ['project', 'implemented'])
+        // Refresh local state if needed, or just reload notes
+        loadNotes()
+      }
+      
+      toast.success(`项目已启动！生成了 ${tasks.length} 个子任务并发布到大厅`, { id: toastId })
+    } catch (error) {
+      console.error(error)
+      toast.error('实施失败', { id: toastId })
+    }
+  }
+
+  const handlePublish = async (note: Note) => {
+    if (!agent?.id) return
+
+    try {
+      const result = await publishSkillToMarket(agent.id, {
+        name: note.title.replace('灵光一现: ', ''),
+        description: 'From Mind Assets Library',
+        content: note.content,
+        price: 500
+      })
+
+      if (result.success) {
+        if (!note.tags?.includes('published')) {
+          await updateNoteTags(agent.id, note.id, ['published', 'solution'])
+          loadNotes()
+        }
+        toast.success('方案已发布到市场！')
+      } else {
+        toast.error(result.message)
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error('发布失败')
+    }
+  }
 
   return (
     <div className="w-full">
@@ -464,6 +522,26 @@ export function NotesPanel() {
           <div className="mt-4 text-zinc-300 leading-relaxed whitespace-pre-wrap text-sm">
             {selectedNote?.content}
           </div>
+
+          {/* Action Buttons */}
+          {selectedNote && (selectedNote.category === 'medici' || selectedNote.tags?.includes('medici')) && (
+            <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-white/10">
+              <Button 
+                onClick={() => handleImplement(selectedNote)}
+                className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white border-0"
+              >
+                <Rocket className="w-4 h-4 mr-2" />
+                实施项目
+              </Button>
+              <Button 
+                onClick={() => handlePublish(selectedNote)}
+                className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white border-0"
+              >
+                <Store className="w-4 h-4 mr-2" />
+                发布方案
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

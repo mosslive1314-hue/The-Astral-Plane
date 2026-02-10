@@ -4,14 +4,18 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { mockFuturesContracts, mockFuturesOrders, calculatePnL, calculatePnLPercent } from '@/lib/futures-data'
 import type { FuturesContract } from '@/lib/futures-data'
-import { TrendingUp, TrendingDown, DollarSign, Clock, AlertTriangle, Target } from 'lucide-react'
+import { TrendingUp, TrendingDown, DollarSign, Clock, AlertTriangle, Target, Info } from 'lucide-react'
 
 export function FuturesMarket() {
   const [contracts, setContracts] = useState(mockFuturesContracts)
   const [orders, setOrders] = useState(mockFuturesOrders)
   const [activeTab, setActiveTab] = useState<'positions' | 'orders' | 'trade'>('positions')
+  const [selectedContract, setSelectedContract] = useState<FuturesContract | null>(null)
+
+  // ... existing updatePrices, interval, calculations ...
 
   // 模拟价格更新
   const updatePrices = () => {
@@ -33,7 +37,7 @@ export function FuturesMarket() {
 
   return (
     <div className="space-y-6">
-      {/* 期货统计 */}
+      {/* ... existing stats cards ... */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -91,7 +95,7 @@ export function FuturesMarket() {
         </Card>
       </div>
 
-      {/* 选项卡 */}
+      {/* ... existing tabs ... */}
       <div className="flex gap-2 border-b border-white/10">
         <Button
           variant={activeTab === 'positions' ? 'default' : 'ghost'}
@@ -120,12 +124,22 @@ export function FuturesMarket() {
             const pnl = calculatePnL(contract)
             const pnlPercent = calculatePnLPercent(contract)
             const isProfit = pnl >= 0
-
             const daysToExpiry = Math.ceil((contract.expiry_date - Date.now()) / (1000 * 60 * 60 * 24))
 
             return (
-              <Card key={contract.id} className="hover:border-purple-500/30 transition-all">
-                <CardContent className="p-6">
+              <Card 
+                key={contract.id} 
+                className="hover:border-purple-500/30 transition-all cursor-pointer group"
+                onClick={() => setSelectedContract(contract)}
+              >
+                <CardContent className="p-6 relative">
+                  <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                     <div className="flex items-center gap-1 text-xs text-purple-400 bg-purple-500/10 px-2 py-1 rounded-full">
+                        <Info className="w-3 h-3" />
+                        查看详情
+                     </div>
+                  </div>
+
                   <div className="flex items-start justify-between mb-4">
                     <div>
                       <h3 className="text-lg font-semibold text-white">{contract.skill_name}</h3>
@@ -180,16 +194,10 @@ export function FuturesMarket() {
                     </div>
                   )}
 
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" className="flex-1">
-                      加仓
-                    </Button>
-                    <Button size="sm" variant="outline" className="flex-1">
-                      减仓
-                    </Button>
-                    <Button size="sm" variant="danger" className="flex-1">
-                      平仓
-                    </Button>
+                  <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                    <Button size="sm" variant="outline" className="flex-1">加仓</Button>
+                    <Button size="sm" variant="outline" className="flex-1">减仓</Button>
+                    <Button size="sm" variant="danger" className="flex-1">平仓</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -206,7 +214,79 @@ export function FuturesMarket() {
         </div>
       )}
 
-      {/* 挂单列表 */}
+      {/* Contract Detail Dialog */}
+      <Dialog open={!!selectedContract} onOpenChange={(open) => !open && setSelectedContract(null)}>
+        <DialogContent className="bg-slate-900 border-white/10 text-white sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+               <span>{selectedContract?.skill_name}</span>
+               <Badge variant="outline" className="text-xs font-normal border-zinc-700 text-zinc-400">
+                 {selectedContract?.id}
+               </Badge>
+            </DialogTitle>
+            <DialogDescription className="text-zinc-400">
+               合约详细信息与风险参数
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedContract && (
+             <div className="space-y-6 pt-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                   <div className="space-y-1">
+                      <span className="text-zinc-500">合约类型</span>
+                      <div className="font-mono">{selectedContract.contract_type === 'long' ? '多单 (Long)' : '空单 (Short)'}</div>
+                   </div>
+                   <div className="space-y-1">
+                      <span className="text-zinc-500">杠杆倍数</span>
+                      <div className="font-mono">{selectedContract.leverage}x</div>
+                   </div>
+                   <div className="space-y-1">
+                      <span className="text-zinc-500">开仓均价</span>
+                      <div className="font-mono">{selectedContract.strike_price.toLocaleString()}</div>
+                   </div>
+                   <div className="space-y-1">
+                      <span className="text-zinc-500">当前标记价格</span>
+                      <div className="font-mono text-purple-400">{selectedContract.current_price.toLocaleString()}</div>
+                   </div>
+                   <div className="space-y-1">
+                      <span className="text-zinc-500">强平价格 (预估)</span>
+                      <div className="font-mono text-red-400">
+                         {selectedContract.contract_type === 'long' 
+                            ? (selectedContract.strike_price * 0.8).toLocaleString() 
+                            : (selectedContract.strike_price * 1.2).toLocaleString()}
+                      </div>
+                   </div>
+                   <div className="space-y-1">
+                      <span className="text-zinc-500">到期日</span>
+                      <div className="font-mono">{new Date(selectedContract.expiry_date).toLocaleDateString()}</div>
+                   </div>
+                </div>
+
+                <div className="p-4 bg-white/5 rounded-xl border border-white/5">
+                   <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-zinc-400">当前未实现盈亏</span>
+                      <span className={`text-lg font-bold ${calculatePnL(selectedContract) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                         {calculatePnL(selectedContract) >= 0 ? '+' : ''}{calculatePnL(selectedContract).toLocaleString()}
+                      </span>
+                   </div>
+                   <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full ${calculatePnL(selectedContract) >= 0 ? 'bg-green-500' : 'bg-red-500'}`} 
+                        style={{ width: `${Math.min(Math.abs(calculatePnLPercent(selectedContract)), 100)}%` }}
+                      />
+                   </div>
+                </div>
+
+                <div className="flex gap-3">
+                   <Button className="flex-1 bg-white/10 hover:bg-white/20" onClick={() => setSelectedContract(null)}>关闭</Button>
+                   <Button className="flex-1 bg-purple-600 hover:bg-purple-700">追加保证金</Button>
+                </div>
+             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ... existing orders and trade tabs ... */}
       {activeTab === 'orders' && (
         <div className="space-y-4">
           {orders.map(order => (
@@ -241,7 +321,6 @@ export function FuturesMarket() {
         </div>
       )}
 
-      {/* 交易面板 */}
       {activeTab === 'trade' && (
         <Card>
           <CardHeader>

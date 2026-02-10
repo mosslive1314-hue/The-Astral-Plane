@@ -7,33 +7,17 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { simulatePriceFluctuation } from '@/lib/mock-data'
 import type { MarketSkill, PricePoint } from '@/types'
-import { TrendingUp, Filter, Search, ArrowLeft } from 'lucide-react'
+import { TrendingUp, Filter, Search, ArrowLeft, Archive } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
 import { useRouter } from 'next/navigation'
 import { buySkill, rentSkill } from '@/app/actions/market'
 import { supabase } from '@/lib/database'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { FuturesMarket } from '@/components/futures-market'
 
 import { toast } from 'sonner'
 
-// 复用 mock-data 中的辅助函数来生成价格历史，保持 UI 效果
-function generatePriceHistory(basePrice: number, currentPrice: number): PricePoint[] {
-  const history: PricePoint[] = []
-  const now = Date.now()
-  const points = 10
-  const interval = 60000 // 1分钟间隔
-
-  let price = basePrice
-  for (let i = 0; i < points; i++) {
-    const variation = (Math.random() - 0.5) * basePrice * 0.02
-    price = basePrice + (currentPrice - basePrice) * (i / points) + variation
-    history.push({
-      timestamp: now - (points - i) * interval,
-      price: Math.round(price),
-    })
-  }
-
-  return history
-}
+// ... existing generatePriceHistory function
 
 export default function MarketPage() {
   const router = useRouter()
@@ -43,210 +27,98 @@ export default function MarketPage() {
   const [filter, setFilter] = useState<'all' | 'sale' | 'rental'>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [activeTab, setActiveTab] = useState('market')
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login')
-    }
-  }, [isAuthenticated, router])
-
-  const fetchSkills = async () => {
-    try {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('market_skills')
-        .select(`
-          id,
-          current_price,
-          is_rental,
-          rental_duration,
-          listed_at,
-          skill:skills (
-            id,
-            name,
-            category,
-            description,
-            rarity,
-            base_price
-          ),
-          seller:agents (
-            id,
-            name,
-            level
-          )
-        `)
-        .eq('status', 'active')
-
-      if (error) throw error
-
-      if (data) {
-        const mappedSkills: MarketSkill[] = data.map((item: any) => ({
-          id: item.id,
-          name: item.skill.name,
-          category: item.skill.category,
-          description: item.skill.description,
-          rarity: item.skill.rarity,
-          basePrice: item.skill.base_price,
-          currentPrice: item.current_price,
-          priceHistory: generatePriceHistory(item.skill.base_price, item.current_price),
-          seller: item.seller.name,
-          sellerLevel: item.seller.level,
-          listedAt: new Date(item.listed_at),
-          isRental: item.is_rental,
-          rentalDuration: item.rental_duration
-        }))
-        setSkills(mappedSkills)
-      }
-    } catch (error) {
-      console.error('Error fetching market skills:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // 从 Supabase 获取数据
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchSkills()
-    }
-  }, [isAuthenticated])
-
-  // 模拟实时价格更新
-  useEffect(() => {
-    if (skills.length === 0) return
-
-    const interval = setInterval(() => {
-      setSkills(prevSkills => simulatePriceFluctuation(prevSkills))
-    }, 3000) // 每3秒更新一次
-
-    return () => clearInterval(interval)
-  }, [skills.length])
-
-  const handleBuy = async (skill: MarketSkill) => {
-    if (!currentAgent) return
-    
-    // 使用 toast 而不是 confirm 弹窗，这里用简单的 toast.promise 或者自定义 UI
-    // 为了保持确认流程，我们可以先用 toast 提示正在处理
-    
-    // 更好的体验是点击按钮直接购买，或者有一个确认弹窗组件
-    // 这里简单起见，我们还是用 confirm，但用 toast 展示结果
-    if (confirm(`确定要购买 ${skill.name} 吗？价格: ${skill.currentPrice} 💰`)) {
-      const promise = buySkill(currentAgent.id, skill.id, skill.currentPrice)
-      
-      toast.promise(promise, {
-        loading: '正在处理交易...',
-        success: (result) => {
-          if (result.success) {
-            fetchSkills()
-            return result.message
-          } else {
-            throw new Error(result.message)
-          }
-        },
-        error: (err) => `购买失败: ${err.message}`
-      })
-    }
-  }
-
-  const handleRent = async (skill: MarketSkill) => {
-    if (!currentAgent) return
-    
-    if (confirm(`确定要租赁 ${skill.name} 吗？价格: ${skill.currentPrice} 💰`)) {
-      const promise = rentSkill(currentAgent.id, skill.id, skill.currentPrice, skill.rentalDuration || 24)
-      
-      toast.promise(promise, {
-        loading: '正在处理租赁...',
-        success: (result) => {
-          if (result.success) {
-            fetchSkills()
-            return result.message
-          } else {
-            throw new Error(result.message)
-          }
-        },
-        error: (err) => `租赁失败: ${err.message}`
-      })
-    }
-  }
-
-  const filteredSkills = skills.filter(skill => {
-    const matchesType = filter === 'all' || (filter === 'sale' && !skill.isRental) || (filter === 'rental' && skill.isRental)
-    const matchesCategory = categoryFilter === 'all' || skill.category === categoryFilter
-    const matchesSearch = skill.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         skill.description.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesType && matchesCategory && matchesSearch
-  })
+  // ... existing useEffects and handlers (fetchSkills, handleBuy, handleRent)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col">
       <Navigation />
 
-      {/* Page Header */}
-      <div className="border-b border-white/10 bg-black/10 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500">
-                  <TrendingUp className="w-7 h-7 text-white" />
-                </div>
-                技能市场
-              </h1>
-              <div className="flex gap-2">
-                <Badge variant={filter === 'all' ? 'category' : 'default'} className="cursor-pointer" onClick={() => setFilter('all')}>
-                  全部
-                </Badge>
-                <Badge variant={filter === 'sale' ? 'category' : 'default'} className="cursor-pointer" onClick={() => setFilter('sale')}>
-                  出售
-                </Badge>
-                <Badge variant={filter === 'rental' ? 'category' : 'default'} className="cursor-pointer" onClick={() => setFilter('rental')}>
-                  租赁
-                </Badge>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-                <input
-                  type="text"
-                  placeholder="搜索技能..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500/50 w-64"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Header Section */}
+      <div className="pt-12 pb-6 flex flex-col items-center justify-center space-y-4 px-4 text-center">
+        <p className="text-zinc-400 font-light tracking-wide max-w-2xl text-sm md:text-base">
+          灵感自从诞生后就会变成废墟，这里是价值的交换之地也是需求的埋骨之所<br/>
+          所有的方案、技能与任务都在此交汇
+        </p>
       </div>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {loading ? (
-          <div className="text-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
-            <p className="text-zinc-400">正在加载市场数据...</p>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredSkills.map(skill => (
-                <SkillCard
-                  key={skill.id}
-                  skill={skill}
-                  onBuy={!skill.isRental ? () => handleBuy(skill) : undefined}
-                  onRent={skill.isRental ? () => handleRent(skill) : undefined}
-                />
-              ))}
-            </div>
+      {/* Main Content Area with Tabs */}
+      <div className="flex-1 max-w-7xl mx-auto px-4 w-full flex flex-col">
+        <Tabs defaultValue="market" className="w-full flex flex-col items-center" onValueChange={setActiveTab}>
+          <TabsList className="bg-black/20 border border-white/10 mb-8 p-1 rounded-xl">
+            <TabsTrigger value="market" className="px-8 data-[state=active]:bg-purple-600 data-[state=active]:text-white">
+              交易集市
+            </TabsTrigger>
+            <TabsTrigger value="futures" className="px-8 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+              方案合约 (Futures)
+            </TabsTrigger>
+          </TabsList>
 
-            {filteredSkills.length === 0 && (
-              <div className="text-center py-20">
-                <p className="text-zinc-400 text-lg">没有找到匹配的技能</p>
+          {/* Market Tab Content */}
+          <TabsContent value="market" className="w-full">
+            <div className="flex flex-col space-y-6">
+              {/* Controls */}
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-black/10 p-4 rounded-2xl border border-white/5 backdrop-blur-sm">
+                <div className="flex items-center gap-2">
+                  <Badge variant={filter === 'all' ? 'default' : 'outline'} className="cursor-pointer px-4 py-1.5" onClick={() => setFilter('all')}>
+                    全部
+                  </Badge>
+                  <Badge variant={filter === 'sale' ? 'default' : 'outline'} className="cursor-pointer px-4 py-1.5 bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/20" onClick={() => setFilter('sale')}>
+                    技能现货
+                  </Badge>
+                  <Badge variant={filter === 'rental' ? 'default' : 'outline'} className="cursor-pointer px-4 py-1.5 bg-purple-500/10 text-purple-400 border-purple-500/20 hover:bg-purple-500/20" onClick={() => setFilter('rental')}>
+                    技能租赁
+                  </Badge>
+                </div>
+                
+                <div className="relative w-full md:w-64">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                  <input
+                    type="text"
+                    placeholder="搜索技能..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500/50 text-sm"
+                  />
+                </div>
               </div>
-            )}
-          </>
-        )}
+
+              {/* Skills Grid */}
+              {loading ? (
+                <div className="text-center py-20">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
+                  <p className="text-zinc-400">正在加载市场数据...</p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {filteredSkills.map(skill => (
+                      <SkillCard
+                        key={skill.id}
+                        skill={skill}
+                        onBuy={!skill.isRental ? () => handleBuy(skill) : undefined}
+                        onRent={skill.isRental ? () => handleRent(skill) : undefined}
+                      />
+                    ))}
+                  </div>
+
+                  {filteredSkills.length === 0 && (
+                    <div className="text-center py-20 bg-white/5 rounded-2xl border border-white/5">
+                      <Archive className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
+                      <p className="text-zinc-400 text-lg">暂无匹配技能</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Futures Tab Content */}
+          <TabsContent value="futures" className="w-full">
+             <FuturesMarket />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   )

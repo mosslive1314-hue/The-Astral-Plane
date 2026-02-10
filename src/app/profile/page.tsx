@@ -10,13 +10,73 @@ import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { User, Settings, LogOut, Shield, Zap, Award, Coins, BrainCircuit, Activity, Eye, EyeOff, Lock } from 'lucide-react'
+import { supabase } from '@/lib/database'
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { user, agent, isAuthenticated, logout } = useAuthStore()
+  const { user, agent, isAuthenticated, logout, setAgent } = useAuthStore()
   const [isPublicView, setIsPublicView] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [permissionsOpen, setPermissionsOpen] = useState(false)
+
+  // Fetch latest agent data on mount
+  useEffect(() => {
+    const fetchLatestAgentData = async () => {
+      if (!user?.id) return
+
+      try {
+        // 1. Get Agent Basic Info
+        const { data: agentData, error: agentError } = await supabase
+          .from('agents')
+          .select('*')
+          .eq('user_id', user.id)
+          .single()
+
+        if (agentError || !agentData) return
+
+        // 2. Get Agent Skills
+        const { data: skillsData, error: skillsError } = await supabase
+          .from('agent_skills')
+          .select(`
+            level,
+            max_level,
+            skill:skills (
+              id,
+              name,
+              category
+            )
+          `)
+          .eq('agent_id', agentData.id)
+
+        // 3. Construct Agent Object
+        const fullAgent = {
+          id: agentData.id,
+          userId: agentData.user_id,
+          name: agentData.name,
+          level: agentData.level,
+          coins: agentData.coins,
+          creditScore: agentData.credit_score,
+          avatar: agentData.avatar,
+          skills: skillsData?.map((item: any) => ({
+            id: item.skill.id,
+            name: item.skill.name,
+            category: item.skill.category,
+            level: item.level,
+            maxLevel: item.max_level
+          })) || [],
+          achievements: [] // TODO: Add achievements table fetch
+        }
+
+        setAgent(fullAgent)
+      } catch (error) {
+        console.error('Failed to refresh profile:', error)
+      }
+    }
+
+    if (isAuthenticated) {
+      fetchLatestAgentData()
+    }
+  }, [isAuthenticated, user?.id, setAgent])
 
   useEffect(() => {
     if (!isAuthenticated) {

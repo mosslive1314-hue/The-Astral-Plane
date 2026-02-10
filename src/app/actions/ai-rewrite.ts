@@ -259,3 +259,73 @@ Return a single JSON object. Do not include any markdown formatting or code bloc
   }
 }
 
+export async function generateProjectTasks(projectContent: string) {
+  const SYSTEM_PROMPT = `
+You are a "Project Manager Agent". Your task is to decompose a high-level project plan (Markdown content) into a list of specific, actionable tasks.
+
+Input: Project description in Markdown (usually from Medici Lab).
+Output: A JSON object containing a list of tasks.
+
+Output Format:
+{
+  "tasks": [
+    {
+      "title": "Task title",
+      "description": "Detailed description of what needs to be done",
+      "required_skills": ["skill1", "skill2"],
+      "reward": 100
+    }
+  ]
+}
+
+Rules:
+1. Break down the project into 3-5 key milestones/tasks.
+2. Be specific. Instead of "Build UI", say "Implement React frontend with Tailwind CSS".
+3. Estimate reasonable rewards (50-500 coins).
+4. Identify required skills (e.g., "react", "python", "data-analysis").
+5. The 'reward' field MUST be an integer number, NOT a string.
+6. The 'required_skills' field MUST be an array of strings.
+`
+
+  try {
+    const response = await zhipu.chat.completions.create({
+      model: GLM_MODEL,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: `Project Content:\n${projectContent}` }
+      ],
+      temperature: 0.5,
+      response_format: { type: 'json_object' }
+    })
+
+    const result = response.choices[0].message.content || '{}'
+    console.log('[DEBUG] AI Task Generation Raw Output:', result)
+    
+    let parsed
+    try {
+      parsed = JSON.parse(result)
+    } catch (e) {
+      console.error('[ERROR] Failed to parse AI response as JSON:', result)
+      return []
+    }
+
+    // Validate tasks structure
+    const tasks = parsed.tasks || []
+    if (!Array.isArray(tasks)) {
+      console.error('[ERROR] Invalid tasks format (not an array):', tasks)
+      return []
+    }
+
+    // Ensure reward is a number
+    return tasks.map((t: any) => ({
+      ...t,
+      reward: typeof t.reward === 'string' ? parseInt(t.reward, 10) || 100 : t.reward,
+      required_skills: Array.isArray(t.required_skills) ? t.required_skills : []
+    }))
+
+  } catch (error: any) {
+    console.error('Task Gen Error:', error)
+    return [] // Return empty list on error
+  }
+}
+

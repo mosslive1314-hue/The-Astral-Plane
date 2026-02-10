@@ -9,57 +9,38 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CheckCircle, Coins, Search, Plus, Filter, User, Mic, Send, Volume2 } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
 import { toast } from 'sonner'
-import { createTask } from '@/app/actions/tasks'
-import { useFormState } from 'react-dom'
+import { createTask, getTasks, acceptTask } from '@/app/actions/tasks'
 import { useSearchParams } from 'next/navigation'
-
-// 模拟任务数据
-const INITIAL_TASKS = [
-  {
-    id: '1',
-    title: 'Python 数据清洗脚本',
-    description: '需要一个 Python 脚本来清洗 100MB 的 CSV 数据，去除空值并格式化日期字段。',
-    reward: 500,
-    publisher: 'DataWizard',
-    publisherLevel: 5,
-    skills: ['Python', 'Data Processing'],
-    status: 'open',
-    timeLeft: '2h 15m'
-  },
-  {
-    id: '2',
-    title: 'React 组件优化',
-    description: '优化现有的 Dashboard 组件，减少重渲染次数，提升性能。',
-    reward: 800,
-    publisher: 'FrontendMaster',
-    publisherLevel: 8,
-    skills: ['React', 'Performance'],
-    status: 'open',
-    timeLeft: '5h 30m'
-  },
-  {
-    id: '3',
-    title: '撰写 AI 行业分析报告',
-    description: '基于提供的资料，撰写一份关于 2026 年 AI Agent 市场趋势的分析报告。',
-    reward: 1200,
-    publisher: 'MarketInsider',
-    publisherLevel: 12,
-    skills: ['Writing', 'Research'],
-    status: 'open',
-    timeLeft: '1d 4h'
-  }
-]
 
 export function TasksSystem() {
   const { agent } = useAuthStore()
   const searchParams = useSearchParams()
-  const [tasks, setTasks] = useState(INITIAL_TASKS)
+  const [tasks, setTasks] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'high_reward' | 'easy'>('all')
   const [activeTab, setActiveTab] = useState('browse')
   
   // 自动填充
   const action = searchParams.get('action')
   const preTitle = searchParams.get('title')
+
+  // 加载任务列表
+  const loadTasks = async () => {
+    try {
+      setLoading(true)
+      const data = await getTasks()
+      setTasks(data || [])
+    } catch (error) {
+      console.error('Failed to load tasks', error)
+      toast.error('加载任务列表失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadTasks()
+  }, [])
 
   // 如果 URL 有 action=post，自动切换到发布 tab
   useEffect(() => {
@@ -77,12 +58,6 @@ export function TasksSystem() {
       return
     }
     
-    formData.append('agentId', agent.id)
-    
-    // 模拟 Server Action 调用
-    // const result = await createTask(null, formData)
-    
-    // 直接前端模拟以保证流畅演示
     const title = formData.get('title') as string
     const description = formData.get('description') as string
     const reward = parseInt(formData.get('reward') as string)
@@ -93,25 +68,39 @@ export function TasksSystem() {
       return
     }
 
-    const newTask = {
-      id: Date.now().toString(),
-      title,
-      description,
-      reward,
-      publisher: agent.name,
-      publisherLevel: agent.level,
-      skills: skillsStr.split(',').map(s => s.trim()),
-      status: 'open',
-      timeLeft: '48h 00m'
-    }
+    try {
+      await createTask({
+        title,
+        description,
+        reward,
+        required_skills: skillsStr.split(',').map(s => s.trim()),
+        publisher_id: agent.id
+      })
 
-    setTasks([newTask, ...tasks])
-    toast.success('任务发布成功！', {
-      description: `已冻结 ${reward} 金币`
-    })
+      toast.success('任务发布成功！', {
+        description: `已冻结 ${reward} 金币`
+      })
+      
+      if (formRef.current) {
+        formRef.current.reset()
+      }
+      setActiveTab('browse')
+      loadTasks()
+    } catch (error) {
+      console.error(error)
+      toast.error('发布失败，请重试')
+    }
+  }
+
+  const handleAcceptTask = async (taskId: string) => {
+    if (!agent) return
     
-    if (formRef.current) {
-      formRef.current.reset()
+    try {
+      await acceptTask(taskId, agent.id)
+      toast.success('接单成功！请按时交付')
+      loadTasks()
+    } catch (error) {
+      toast.error('接单失败')
     }
   }
 
@@ -169,47 +158,60 @@ export function TasksSystem() {
           </Badge>
         </div>
 
-        <div className="grid grid-cols-1 gap-4">
-          {filteredTasks.map(task => (
-            <Card key={task.id} className="bg-black/20 border-white/5 hover:border-green-500/30 transition-all group">
-              <CardContent className="p-5 flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="font-bold text-white text-lg group-hover:text-green-400 transition-colors">
-                      {task.title}
-                    </h3>
-                    <Badge variant="outline" className="text-xs text-zinc-500 border-zinc-700">
-                      {task.timeLeft}
-                    </Badge>
-                  </div>
-                  <p className="text-zinc-400 text-sm mb-3 line-clamp-2">
-                    {task.description}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    {task.skills.map(skill => (
-                      <Badge key={skill} variant="secondary" className="text-[10px] bg-white/5 text-zinc-300">
-                        {skill}
+        {loading ? (
+          <div className="text-center py-20 text-zinc-500">加载任务中...</div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4">
+            {filteredTasks.map(task => (
+              <Card key={task.id} className="bg-black/20 border-white/5 hover:border-green-500/30 transition-all group">
+                <CardContent className="p-5 flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="font-bold text-white text-lg group-hover:text-green-400 transition-colors">
+                        {task.title}
+                      </h3>
+                      <Badge variant="outline" className={`text-xs border-zinc-700 ${task.status === 'open' ? 'text-green-400' : 'text-zinc-500'}`}>
+                        {task.status === 'open' ? '招募中' : '进行中'}
                       </Badge>
-                    ))}
-                    <span className="text-xs text-zinc-600 ml-2">
-                      by {task.publisher} (Lv.{task.publisherLevel})
-                    </span>
+                    </div>
+                    <p className="text-zinc-400 text-sm mb-3 line-clamp-2">
+                      {task.description}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      {(Array.isArray(task.required_skills) ? task.required_skills : []).map((skill: string) => (
+                        <Badge key={skill} variant="secondary" className="text-[10px] bg-white/5 text-zinc-300">
+                          {skill}
+                        </Badge>
+                      ))}
+                      <span className="text-xs text-zinc-600 ml-2">
+                        by {task.publisher?.name || 'Unknown'}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                
-                <div className="flex flex-col items-end gap-3 min-w-[120px]">
-                  <div className="text-2xl font-bold text-amber-400 font-mono flex items-center gap-1">
-                    <Coins className="w-5 h-5" />
-                    {task.reward}
+                  
+                  <div className="flex flex-col items-end gap-3 min-w-[120px]">
+                    <div className="text-2xl font-bold text-amber-400 font-mono flex items-center gap-1">
+                      <Coins className="w-5 h-5" />
+                      {task.reward}
+                    </div>
+                    {task.status === 'open' && task.publisher_id !== agent?.id && (
+                      <Button 
+                        size="sm" 
+                        className="bg-green-600 hover:bg-green-700 text-white w-full"
+                        onClick={() => handleAcceptTask(task.id)}
+                      >
+                        接取任务
+                      </Button>
+                    )}
                   </div>
-                  <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white w-full">
-                    接取任务
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+            {filteredTasks.length === 0 && (
+              <div className="text-center py-10 text-zinc-500">暂无任务</div>
+            )}
+          </div>
+        )}
       </TabsContent>
 
       {/* 发布任务 */}
