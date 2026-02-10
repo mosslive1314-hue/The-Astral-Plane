@@ -330,7 +330,7 @@ export function TasksSystem() {
 
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-400">悬赏金额 (Coins)</label>
+                  <label className="text-sm font-medium text-zinc-400">悬赏金额 (金币)</label>
                   <Input 
                     name="reward" 
                     type="number" 

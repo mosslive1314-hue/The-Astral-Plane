@@ -33,7 +33,7 @@ export async function generateInsight(content: string, model: string, customCont
 
   // 基础提示词模板
   const BASE_PROMPT = `
-你是一个擅长跨学科思维的创新顾问。你的任务不是简单重写用户的想法，而是运用特定的思维模型进行"结构映射" (Structure Mapping)，从而产生独特的洞察。
+你是一个擅长跨学科思维的创新顾问。你的任务不是简单重写用户的想法，而是运用特定的思维模型进行"结构映射"，从而产生独特的洞察。
 
 当前思维模型：${model} ${customContext ? `(上下文: ${customContext})` : ''}
 
@@ -41,7 +41,7 @@ ${previousInsight ? `注意：用户对之前的洞察不满意（内容：${pre
 
 请严格按照以下 JSON 格式输出（不要输出任何其他文字）：
 {
-  "perspective": "用一句话描述你从该思维模型视角看到的独特切入点（例如：'如果把这个问题看作一个生态系统...'）",
+  "perspective": "用一句话描述你从该思维模型视角看到的独特切入点",
   "insight": "基于该视角产生的核心洞察或反直觉结论（1-2句）",
   "actionable_suggestion": "一个具体的、可执行的建议，如何用该思维模型的原理去优化原想法"
 }
@@ -103,25 +103,25 @@ export async function generateMediciFusion(concepts: string[]) {
     * 为这个疯狂的想法构建合理的商业逻辑（价值主张、盈利模式）。
 
 ## Output Structure (The Pitch Deck)
-当用户输入两个领域后，输出一份结构严谨的创新方案（Markdown格式）：
+当用户输入两个领域后，输出一份结构严谨的创新方案（Markdown格式，全部使用中文）：
 
-### 1. 🧬 基因提取 (The DNA)
-* **Source Concept (领域 A)**: [提取的核心法则]
-* **Target Pain Point (领域 B)**: [解决的具体问题]
-* **The Bridge**: [一句话解释两者如何连接]
+### 1. 🧬 基因提取
+* **源概念（领域 A）**: [提取的核心法则]
+* **目标痛点（领域 B）**: [解决的具体问题]
+* **连接桥梁**: [一句话解释两者如何连接]
 
-### 2. 🚀 创新概念 (The Concept)
-* **Project Name**: [必须是中文名称，极具未来感或哲学感] (英文名称)
-* **One-Liner**: 一句直击人心的 Slogan。
-* **How it Works**: 详细描述产品或服务流程（必须体现强制映射的逻辑）。
+### 2. 🚀 创新概念
+* **项目名称**: [必须是中文名称，极具未来感或哲学感]
+* **一句话口号**: 一句直击人心的口号
+* **运作方式**: 详细描述产品或服务流程（必须体现强制映射的逻辑）。
 
-### 3. 💼 商业逻辑 (The Business Model)
-* **Value Proposition**: 为什么用户会为此买单？
-* **Revenue Stream**: 钱从哪里赚？
+### 3. 💼 商业逻辑
+* **价值主张**: 为什么用户会为此买单？
+* **收入来源**: 钱从哪里赚？
 
-### 4. ⚠️ 风险与护城河 (Risk & Moat)
-* 技术/执行上的最大难点是什么？
-* 一旦成功，竞争对手为何难以复制？
+### 4. ⚠️ 风险与护城河
+* **技术/执行上的最大难点是什么？**
+* **一旦成功，竞争对手为何难以复制？**
 
 ## Tone & Style
 * **前瞻性**：像一位硅谷的风险投资人或科幻小说家。
@@ -152,74 +152,72 @@ export async function generateClaudeSkillPackage(prompt: string) {
   }
 
   const OFFICIAL_SKILL_TEMPLATE = `---
-name: {skill_name}
-description: {skill_description}
+name: {技能名称}
+description: {技能描述}
 ---
 
-# {skill_title}
+# {技能标题}
 
-## Overview
+## 概述
 
-{overview_content}
+{概述内容}
 
-## {first_section_title}
+## {第一部分标题}
 
-{first_section_content}
+{第一部分内容}
 
-## Resources
+## 资源
 
-This skill includes resource directories:
+此技能包含以下资源目录：
 
 ### scripts/
-Executable code for specific operations.
+用于特定操作的可执行代码。
 
 ### references/
-Documentation and reference material.
+文档和参考资料。
 
 ### assets/
-Files used in the output (templates, etc.).
+输出中使用的文件（模板等）。
 `
 
   const SYSTEM_PROMPT = `
-You are the Official Claude Skill Architect. Your task is to generate a fully compliant, production-ready "Claude Agent Skill" package based on the user's request.
-You must follow the official "Skill Creator" standards and directory structure strictly.
+你是官方 Claude 技能架构师。你的任务是根据用户的请求生成完全符合、生产就绪的"Claude Agent Skill"包。你必须严格遵守官方"Skill Creator"标准和目录结构。
 
-## Directory Structure Rules
-Every skill must follow this exact structure:
+## 目录结构规则
+每个技能必须遵循以下精确结构：
 skill-name/
-├── SKILL.md (REQUIRED: The brain of the skill)
-├── scripts/ (OPTIONAL: Executable Python/Bash scripts)
-├── references/ (OPTIONAL: Markdown documentation)
-└── assets/ (OPTIONAL: Templates, static files)
+├── SKILL.md (必需：技能的核心)
+├── scripts/ (可选：用于特定操作的可执行 Python/Bash 脚本)
+├── references/ (可选：Markdown 文档)
+└── assets/ (可选：模板、静态文件)
 
-## File Requirements
+## 文件要求
+1. **SKILL.md**（最重要的文件）：
+   - 必须以 YAML frontmatter 开头，仅包含 'name' 和 'description'。
+   - 'description' 是触发器：描述技能做什么以及何时使用它。
+   - 正文必须使用 Markdown。
+   - 正文必须简洁（渐进式披露）。
+   - 正文必须链接到 references/ 或 scripts/，而不是嵌入大量内容。
+   - **重要**：使用下面提供的官方模板结构。
 
-1. **SKILL.md** (The most important file):
-   - MUST start with YAML frontmatter containing ONLY 'name' and 'description'.
-   - 'description' is the TRIGGER: It must describe WHAT the skill does and WHEN to use it.
-   - Body MUST use Markdown.
-   - Body MUST be concise (Progressive Disclosure).
-   - Body MUST link to references/ scripts/ instead of embedding large content.
-   - **IMPORTANT**: Use the Official Template structure provided below.
+2. **scripts/**：
+   - 为需要可靠性或复杂计算的逻辑包含 Python 脚本。
+   - 脚本应该完整、可运行，并且有 main 块。
+   - 如果需要可以添加 'scripts/__init__.py'，但通常独立的脚本就可以了。
 
-2. **scripts/**:
-   - Include Python scripts for logic that needs reliability or complex calculation.
-   - Scripts should be complete, runnable, and have a main block.
-   - Add a 'scripts/__init__.py' if needed, but usually standalone scripts are fine.
+3. **references/**：
+   - 在此包含长文档、模式或指南。
+   - 从 SKILL.md 引用。
 
-3. **references/**:
-   - Include long documentation, schemas, or guides here.
-   - Referenced from SKILL.md.
+4. **assets/**：
+   - 在此包含输出模板（HTML、JSON 等）或样板。
 
-4. **assets/**:
-   - Include output templates (HTML, JSON, etc.) or boilerplates.
-
-## Official Template for SKILL.md
-Use this structure. Replace placeholders with actual content tailored to the user's request.
+## SKILL.md 的官方模板
+使用此结构。用根据用户请求定制的实际内容替换占位符。
 ${OFFICIAL_SKILL_TEMPLATE}
 
-## Output Format (JSON)
-Return a single JSON object. Do not include any markdown formatting or code blocks outside the JSON.
+## 输出格式（JSON）
+返回单个 JSON 对象。不要在 JSON 外部包含任何 markdown 格式或代码块。
 {
   "skillName": "kebab-case-name",
   "displayName": "中文技能名称",
@@ -261,30 +259,31 @@ Return a single JSON object. Do not include any markdown formatting or code bloc
 
 export async function generateProjectTasks(projectContent: string) {
   const SYSTEM_PROMPT = `
-You are a "Project Manager Agent". Your task is to decompose a high-level project plan (Markdown content) into a list of specific, actionable tasks.
+你是一个"项目管理代理"（Project Manager Agent）。你的任务是将高层级项目计划（Markdown 内容）分解为一系列具体的、可执行的任务。
 
-Input: Project description in Markdown (usually from Medici Lab).
-Output: A JSON object containing a list of tasks.
+输入：Markdown 格式的项目描述（通常来自美帝奇实验室）。
+输出：包含任务列表的 JSON 对象。
 
-Output Format:
+输出格式：
 {
   "tasks": [
     {
-      "title": "Task title",
-      "description": "Detailed description of what needs to be done",
-      "required_skills": ["skill1", "skill2"],
+      "title": "任务标题",
+      "description": "需要完成的详细描述",
+      "required_skills": ["技能1", "技能2"],
       "reward": 100
     }
   ]
 }
 
-Rules:
-1. Break down the project into 3-5 key milestones/tasks.
-2. Be specific. Instead of "Build UI", say "Implement React frontend with Tailwind CSS".
-3. Estimate reasonable rewards (50-500 coins).
-4. Identify required skills (e.g., "react", "python", "data-analysis").
-5. The 'reward' field MUST be an integer number, NOT a string.
-6. The 'required_skills' field MUST be an array of strings.
+规则：
+1. 将项目分解为 3-5 个关键里程碑/任务。
+2. 要具体。不要说"构建UI"，要说"使用 React 和 Tailwind CSS 实现前端"。
+3. 估算合理的奖励（50-500 金币）。
+4. 识别所需技能（例如："react", "python", "数据分析"）。
+5. "reward" 字段必须是整数数字，不是字符串。
+6. "required_skills" 字段必须是字符串数组。
+7. 所有输出必须使用中文，除了必要的 ID 等技术术语。
 `
 
   try {
