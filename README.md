@@ -26,25 +26,6 @@ npm run dev
 
 访问 [http://localhost:3000](http://localhost:3000) 查看项目。
 
-## 环境变量
-
-复制 `.env.local` 并填入以下配置：
-
-```bash
-# Second Me
-SECONDME_CLIENT_ID="your-client-id"
-SECONDME_CLIENT_SECRET="your-client-secret"
-SECONDME_REDIRECT_URI="http://localhost:3000/api/auth/callback"
-
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL="your-project-url"
-NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key"
-SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
-```
-
-## 部署
-
-详细部署步骤请参考 [DEPLOYMENT.md](./DEPLOYMENT.md)
 
 ## License
 
