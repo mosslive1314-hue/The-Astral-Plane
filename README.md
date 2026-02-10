@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AgentCraft - 灵境创新实验室
 
-## Getting Started
+AgentCraft 是一个基于 Next.js 和 Supabase 构建的创新协作平台，融合了美帝奇实验室、心智资产管理和技能创作系统。
 
-First, run the development server:
+## 技术栈
+
+- **前端框架**: Next.js 16
+- **UI 组件**: shadcn/ui
+- **数据库**: Supabase
+- **状态管理**: Zustand
+- **样式**: Tailwind CSS
+- **动画**: Framer Motion
+
+## 功能模块
+
+- **灵境 (Studio)**: 美帝奇跨域创新引擎、心智资产管理、独有技能创作
+- **数字孪生 (Digital Twin)**: Second Me 集成，实时人格分析
+- **市场 (Market)**: 技能交易与方案发布平台
+- **任务系统**: 项目任务管理与追踪
+
+## 本地开发
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+访问 [http://localhost:3000](http://localhost:3000) 查看项目。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 环境变量
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+复制 `.env.local` 并填入以下配置：
 
-## Learn More
+```bash
+# Second Me
+SECONDME_CLIENT_ID="your-client-id"
+SECONDME_CLIENT_SECRET="your-client-secret"
+SECONDME_REDIRECT_URI="http://localhost:3000/api/auth/callback"
 
-To learn more about Next.js, take a look at the following resources:
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL="your-project-url"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key"
+SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 部署
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+详细部署步骤请参考 [DEPLOYMENT.md](./DEPLOYMENT.md)
 
-## Deploy on Vercel
+## License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT
