@@ -122,6 +122,7 @@ export default function ExchangePage() {
           rarity: item.skill.rarity,
           basePrice: item.skill.base_price,
           currentPrice: item.current_price,
+          price: item.current_price,
           priceHistory: generatePriceHistory(item.skill.base_price, item.current_price),
           seller: item.seller.name,
           sellerLevel: item.seller.level,
