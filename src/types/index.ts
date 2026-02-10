@@ -36,6 +36,7 @@ export interface MarketSkill {
   rarity: SkillRarity
   basePrice: number
   currentPrice: number
+  price: number // 当前价格（currentPrice 的别名，用于兼容）
   priceHistory: PricePoint[]
   seller: string
   sellerLevel: number
