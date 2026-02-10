@@ -65,9 +65,18 @@ export default function MarketPage() {
   }, [])
 
   const handleBuy = async (skill: MarketSkill) => {
+    if (!currentAgent?.id) {
+      toast.error('请先登录')
+      return
+    }
+    
     try {
-      await buySkill(skill.id)
-      toast.success('技能购买成功！')
+      const result = await buySkill(currentAgent.id, skill.id, skill.price || 0)
+      if (result.success) {
+        toast.success(result.message)
+      } else {
+        toast.error(result.message)
+      }
     } catch (error) {
       toast.error('技能购买失败')
       console.error(error)
@@ -75,9 +84,18 @@ export default function MarketPage() {
   }
 
   const handleRent = async (skill: MarketSkill) => {
+    if (!currentAgent?.id) {
+      toast.error('请先登录')
+      return
+    }
+    
     try {
-      await rentSkill(skill.id)
-      toast.success('技能租赁成功！')
+      const result = await rentSkill(currentAgent.id, skill.id, skill.price || 0, 24)
+      if (result.success) {
+        toast.success(result.message)
+      } else {
+        toast.error(result.message)
+      }
     } catch (error) {
       toast.error('技能租赁失败')
       console.error(error)
