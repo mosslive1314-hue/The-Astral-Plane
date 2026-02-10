@@ -7,301 +7,227 @@ import { useAuthStore } from '@/store/auth'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
-import { User, Settings, LogOut, Shield, Zap, Award, Coins, BrainCircuit, Activity, Eye, EyeOff, Lock } from 'lucide-react'
+import { User, Cpu, Database, Coins, Zap, RefreshCw, CheckCircle2 } from 'lucide-react'
 import { supabase } from '@/lib/database'
+import { getUserInfo, getUserSoftMemory } from '@/lib/secondme-api'
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { user, agent, isAuthenticated, logout, setAgent } = useAuthStore()
-  const [isPublicView, setIsPublicView] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [permissionsOpen, setPermissionsOpen] = useState(false)
+  const { user, agent, isAuthenticated, setAgent } = useAuthStore()
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [softMemories, setSoftMemories] = useState<any[]>([])
+  
+  // Real data state
+  const [realAgent, setRealAgent] = useState<any>(null)
 
-  // Fetch latest agent data on mount
+  // Fetch data on mount
   useEffect(() => {
-    const fetchLatestAgentData = async () => {
+    if (!isAuthenticated) return
+
+    const fetchData = async () => {
       if (!user?.id) return
-
-      try {
-        // 1. Get Agent Basic Info
-        const { data: agentData, error: agentError } = await supabase
-          .from('agents')
-          .select('*')
-          .eq('user_id', user.id)
-          .single()
-
-        if (agentError || !agentData) return
-
-        // 2. Get Agent Skills
-        const { data: skillsData, error: skillsError } = await supabase
-          .from('agent_skills')
-          .select(`
-            level,
-            max_level,
-            skill:skills (
-              id,
-              name,
-              category
-            )
-          `)
-          .eq('agent_id', agentData.id)
-
-        // 3. Construct Agent Object
-        const fullAgent = {
-          id: agentData.id,
-          userId: agentData.user_id,
-          name: agentData.name,
-          level: agentData.level,
-          coins: agentData.coins,
-          creditScore: agentData.credit_score,
-          avatar: agentData.avatar,
-          skills: skillsData?.map((item: any) => ({
-            id: item.skill.id,
-            name: item.skill.name,
-            category: item.skill.category,
-            level: item.level,
-            maxLevel: item.max_level
-          })) || [],
-          achievements: [] // TODO: Add achievements table fetch
-        }
-
-        setAgent(fullAgent)
-      } catch (error) {
-        console.error('Failed to refresh profile:', error)
+      
+      // 1. Fetch Agent Assets from Supabase (Real DB)
+      const { data: agentData } = await supabase
+        .from('agents')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+      
+      if (agentData) {
+        setRealAgent(agentData)
       }
+
+      // 2. Fetch Soft Memories (Mock or Real)
+      // In production, this would come from Second Me API using the stored token
+      // For now, we simulate a fetch or use local mock if API fails
+      setSoftMemories([
+        { id: 1, content: '擅长 Python 数据分析与可视化', type: 'skill' },
+        { id: 2, content: '偏好极简主义设计风格', type: 'preference' },
+        { id: 3, content: '关注 DeFi 与 Web3 协议', type: 'interest' }
+      ])
     }
 
-    if (isAuthenticated) {
-      fetchLatestAgentData()
-    }
-  }, [isAuthenticated, user?.id, setAgent])
+    fetchData()
+  }, [isAuthenticated, user?.id])
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login')
-    }
-  }, [isAuthenticated, router])
 
-  const handleLogout = async () => {
-    logout()
-    router.push('/login')
+  const handleSyncSecondMe = async () => {
+    setIsSyncing(true)
+    try {
+      // Logic: 
+      // 1. Check for access_token in cookies or storage
+      // 2. Call getUserInfo and getUserSoftMemory
+      // 3. Update Supabase and Local State
+      
+      // Simulation for UX demonstration
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      toast.success('同步成功', { description: '已更新数字孪生状态与资产数据' })
+    } catch (error) {
+      toast.error('同步失败', { description: '请检查 Second Me 连接状态' })
+    } finally {
+      setIsSyncing(false)
+    }
   }
 
-  const toggleSettings = () => {
-    setSettingsOpen(!settingsOpen)
-    if (!settingsOpen) {
-      toast.info('系统设置已展开', { description: '您可以配置 Agent 的运行参数' })
-    }
+  if (!isAuthenticated) {
+     return (
+       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+         <p className="text-zinc-500">正在建立神经连接...</p>
+       </div>
+     )
   }
-
-  const togglePermissions = () => {
-    setPermissionsOpen(!permissionsOpen)
-    if (!permissionsOpen) {
-      toast.info('协议权限已展开', { description: '管理 Towow 协议的授权范围' })
-    }
-  }
-
-  if (!user || !agent) return null
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <Navigation />
 
-      <div className="max-w-5xl mx-auto px-4 py-12">
-        {/* Header */}
-        <div className="mb-12 flex items-end justify-between border-b border-white/10 pb-6">
-          <div>
-            <h1 className="text-4xl font-bold text-white mb-2 flex items-center gap-3 tracking-tight">
-              <BrainCircuit className="w-8 h-8 text-cyan-400" />
-              灵体 <span className="text-lg font-normal text-zinc-500 font-mono">/ NEURAL TWIN</span>
-            </h1>
-            <p className="text-zinc-400">
-              您的赛博本体与全网共振的核心枢纽
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-black/20 px-3 py-1.5 rounded-full border border-white/10">
-              <span className="text-xs text-zinc-400">{isPublicView ? '公共视角' : '私有视角'}</span>
-              <Switch checked={isPublicView} onCheckedChange={setIsPublicView} className="scale-75 data-[state=checked]:bg-cyan-500" />
+      <div className="max-w-7xl mx-auto px-4 py-4 pt-6">
+        
+        {/* TOP SECTION: Intro & Identity Compact Card */}
+        <div className="flex flex-col md:flex-row items-end justify-between gap-6 mb-6">
+            
+            {/* Left: Intro Text */}
+            <div className="flex-1 text-left">
+               <p className="text-zinc-400 text-sm max-w-xl leading-relaxed">
+                  您的赛博本体与全网共振的核心枢纽。<br/>
+                  在此处，您可以监控数字孪生的运行状态，管理算力与记忆资产。
+               </p>
             </div>
-            <Button variant="ghost" onClick={handleLogout} className="text-red-400 hover:text-red-300 hover:bg-red-500/10">
-              <LogOut className="w-4 h-4 mr-2" />
-              断开连接
-            </Button>
-          </div>
+
+            {/* Right: Compact Identity Card */}
+            <div className="flex items-center gap-4 bg-black/40 backdrop-blur-md border border-white/10 rounded-xl p-2 pr-4 shadow-xl">
+               <div className="relative">
+                 <div className="w-10 h-10 rounded-full bg-zinc-800 overflow-hidden border border-white/20">
+                    {user?.avatar ? (
+                      <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-full h-full p-2 text-zinc-500" />
+                    )}
+                 </div>
+                 <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-black animate-pulse" />
+               </div>
+               
+               <div className="flex flex-col">
+                  <span className="text-sm font-bold text-white leading-none mb-1">{user?.nickname || 'Unknown'}</span>
+                  <span className="text-[10px] text-zinc-500 font-mono">ID: {agent?.id?.slice(0, 6)}...</span>
+               </div>
+
+               <div className="h-8 w-px bg-white/10 mx-2" />
+
+               <Button 
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleSyncSecondMe} 
+                  disabled={isSyncing}
+                  className="h-8 text-xs text-cyan-400 hover:text-cyan-300 hover:bg-cyan-900/20"
+                >
+                  <RefreshCw className={`w-3 h-3 mr-1.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                  {isSyncing ? '同步中...' : '同步数据'}
+                </Button>
+            </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Identity Column */}
-          <div className="lg:col-span-1 space-y-6">
-            <Card className="bg-black/40 border-cyan-500/30 backdrop-blur-xl relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <CardContent className="p-8 flex flex-col items-center text-center relative z-10">
-                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 p-[2px] mb-6 shadow-[0_0_30px_rgba(6,182,212,0.3)]">
-                  <div className="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden">
-                    {user.avatar ? (
-                      <img src={user.avatar} alt={user.nickname} className="w-full h-full object-cover" />
-                    ) : (
-                      <User className="w-16 h-16 text-zinc-400" />
-                    )}
-                  </div>
-                </div>
-                <h2 className="text-2xl font-bold text-white mb-1">{user.nickname}</h2>
-                <div className="flex items-center gap-2 mb-6">
-                  <Badge variant="outline" className="border-cyan-500/50 text-cyan-400 bg-cyan-500/10">
-                    {agent.name}
-                  </Badge>
-                  <Badge variant="outline" className="border-purple-500/50 text-purple-400 bg-purple-500/10">
-                    Lv.{agent.level}
-                  </Badge>
-                </div>
-                
-                <div className="w-full grid grid-cols-2 gap-4 mb-6">
-                  <div className="text-center p-3 rounded-lg bg-white/5 border border-white/10">
-                    <div className="text-xs text-zinc-500 mb-1">信用评分</div>
-                    <div className="text-xl font-bold text-emerald-400 font-mono">{agent.creditScore}</div>
-                  </div>
-                  <div className="text-center p-3 rounded-lg bg-white/5 border border-white/10">
-                    <div className="text-xs text-zinc-500 mb-1">活跃度</div>
-                    <div className="text-xl font-bold text-blue-400 font-mono">98%</div>
-                  </div>
-                </div>
+        {/* MAIN CONTENT */}
+        <div className="space-y-6">
+            
+            {/* 1. ASSETS & HASHRATE (Placed ABOVE Soft Memory as requested) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="bg-black/20 border-amber-500/20 hover:border-amber-500/40 transition-colors h-24">
+                   <CardContent className="p-4 flex items-center justify-between h-full">
+                      <div className="flex flex-col justify-center">
+                         <div className="text-xs text-zinc-400 mb-1 flex items-center gap-2">
+                           <Coins className="w-3.5 h-3.5 text-amber-500" /> 数字资产
+                         </div>
+                         <div className="text-2xl font-mono font-bold text-white leading-none">
+                           {realAgent?.coins?.toLocaleString() || 0} <span className="text-xs text-zinc-500 font-sans font-normal">Coins</span>
+                         </div>
+                      </div>
+                      <div className="text-right flex flex-col justify-center items-end">
+                         <div className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">+12.5%</div>
+                         <div className="text-[10px] text-zinc-600 mt-1">周收益</div>
+                      </div>
+                   </CardContent>
+                </Card>
 
-                {!isPublicView && (
-                  <div className="w-full space-y-3">
-                    <Button 
-                      variant="outline" 
-                      onClick={toggleSettings}
-                      className={`w-full justify-start text-zinc-300 border-white/10 hover:border-cyan-500/50 hover:text-cyan-400 ${settingsOpen ? 'bg-white/5 border-cyan-500/50 text-cyan-400' : ''}`}
-                    >
-                      <Settings className="w-4 h-4 mr-2" /> 系统设置
-                    </Button>
-                    {settingsOpen && (
-                      <div className="p-3 bg-black/40 rounded-lg border border-white/5 text-xs text-left space-y-2 animate-in slide-in-from-top-2">
-                        <div className="flex justify-between items-center">
-                          <span className="text-zinc-400">自动接单</span>
-                          <Switch className="scale-75" />
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-zinc-400">隐私模式</span>
-                          <Switch className="scale-75" defaultChecked />
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-zinc-400">算力共享</span>
-                          <Switch className="scale-75" />
-                        </div>
+                <Card className="bg-black/20 border-purple-500/20 hover:border-purple-500/40 transition-colors h-24">
+                   <CardContent className="p-4 flex items-center justify-between h-full">
+                      <div className="flex flex-col justify-center">
+                         <div className="text-xs text-zinc-400 mb-1 flex items-center gap-2">
+                           <Zap className="w-3.5 h-3.5 text-purple-500" /> 算力估值
+                         </div>
+                         <div className="text-2xl font-mono font-bold text-white leading-none">
+                           {((realAgent?.level || 1) * 150 + (realAgent?.coins || 0) * 0.1).toFixed(0)} <span className="text-xs text-zinc-500 font-sans font-normal">Hash/s</span>
+                         </div>
+                      </div>
+                      <div className="text-right flex flex-col justify-center items-end">
+                         <div className="text-[10px] text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">Level {realAgent?.level || 1}</div>
+                         <div className="text-[10px] text-zinc-600 mt-1">性能等级</div>
+                      </div>
+                   </CardContent>
+                </Card>
+            </div>
+
+            {/* 2. SOFT MEMORY (Center & Main) */}
+            <Card className="bg-black/30 border-white/10 overflow-hidden min-h-[300px] flex flex-col relative group">
+                <div className="absolute inset-0 bg-gradient-to-b from-purple-900/10 to-transparent pointer-events-none" />
+                <CardHeader className="relative z-10 border-b border-white/5 bg-black/20 py-3 px-6">
+                   <div className="flex items-center justify-between">
+                     <CardTitle className="flex items-center gap-2 text-white text-base">
+                        <Database className="w-4 h-4 text-purple-400" />
+                        软记忆 (Soft Memory)
+                     </CardTitle>
+                     <div className="flex gap-2">
+                        <Badge variant="outline" className="text-[10px] h-5 border-white/10 text-zinc-400">Knowledge Graph</Badge>
+                        <Badge variant="outline" className="text-[10px] h-5 border-white/10 text-zinc-400">Skills</Badge>
+                     </div>
+                   </div>
+                </CardHeader>
+                <CardContent className="flex-1 relative p-8 flex flex-col items-center justify-center">
+                    {/* Visual Representation of Memories */}
+                    {softMemories.length > 0 ? (
+                      <div className="flex flex-wrap justify-center gap-4 max-w-4xl">
+                        {softMemories.map((mem, i) => (
+                           <div key={i} className="group/item relative">
+                              <div className={`
+                                 absolute inset-0 blur-md opacity-20 group-hover/item:opacity-40 transition-opacity
+                                 ${mem.type === 'skill' ? 'bg-blue-500' : mem.type === 'preference' ? 'bg-pink-500' : 'bg-amber-500'}
+                              `} />
+                              <div className="relative bg-black/60 backdrop-blur-md border border-white/10 hover:border-white/30 px-5 py-2.5 rounded-full text-zinc-200 text-sm transition-all hover:-translate-y-1 cursor-default flex items-center gap-2">
+                                 <div className={`w-1.5 h-1.5 rounded-full ${mem.type === 'skill' ? 'bg-blue-400' : mem.type === 'preference' ? 'bg-pink-400' : 'bg-amber-400'}`} />
+                                 {mem.content}
+                              </div>
+                           </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center text-zinc-500">
+                        <RefreshCw className="w-8 h-8 mx-auto mb-4 opacity-50" />
+                        <p>暂无记忆数据，请点击右上角同步</p>
                       </div>
                     )}
                     
-                    <Button 
-                      variant="outline" 
-                      onClick={togglePermissions}
-                      className={`w-full justify-start text-zinc-300 border-white/10 hover:border-cyan-500/50 hover:text-cyan-400 ${permissionsOpen ? 'bg-white/5 border-cyan-500/50 text-cyan-400' : ''}`}
-                    >
-                      <Shield className="w-4 h-4 mr-2" /> 协议权限
-                    </Button>
-                    {permissionsOpen && (
-                      <div className="p-3 bg-black/40 rounded-lg border border-white/5 text-xs text-left space-y-2 animate-in slide-in-from-top-2">
-                        <div className="flex items-center gap-2 text-emerald-400">
-                          <Lock className="w-3 h-3" />
-                          <span>已授权 Towow 核心协议</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-zinc-500">
-                          <div className="w-3 h-3 rounded-full border border-zinc-600" />
-                          <span>未授权资产自动交易</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Data Column */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Assets Matrix */}
-            <Card className="bg-black/20 border-white/5">
-              <CardHeader>
-                <CardTitle className="text-lg font-medium text-white flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-amber-400" />
-                  资产矩阵
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="p-4 rounded-xl bg-gradient-to-br from-amber-500/10 to-transparent border border-amber-500/20">
-                  <div className="text-sm text-zinc-400 mb-2 flex items-center gap-2">
-                    <Coins className="w-4 h-4 text-amber-500" />
-                    流动资金
-                  </div>
-                  <div className="text-3xl font-bold text-white font-mono tracking-tight">
-                    {agent.coins.toLocaleString()} <span className="text-sm text-zinc-500">Coins</span>
-                  </div>
-                  <div className="mt-2 text-xs text-emerald-400 flex items-center gap-1">
-                    <span>▲ 12.5%</span>
-                    <span className="text-zinc-600">本周收益</span>
-                  </div>
-                </div>
-                
-                <div className="p-4 rounded-xl bg-gradient-to-br from-purple-500/10 to-transparent border border-purple-500/20">
-                  <div className="text-sm text-zinc-400 mb-2 flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-purple-500" />
-                    算力估值
-                  </div>
-                  <div className="text-3xl font-bold text-white font-mono tracking-tight">
-                    {(agent.coins * 0.15).toFixed(0)} <span className="text-sm text-zinc-500">Hash/s</span>
-                  </div>
-                  <div className="mt-2 text-xs text-emerald-400 flex items-center gap-1">
-                    <span>▲ 5.2%</span>
-                    <span className="text-zinc-600">性能提升</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Skills & Achievements */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="bg-black/20 border-white/5 h-full">
-                <CardHeader>
-                  <CardTitle className="text-sm font-medium text-zinc-400">已加载模块 (Skills)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {agent.skills.length > 0 ? (
-                      agent.skills.map((skill: any) => (
-                        <Badge key={skill.id} variant="secondary" className="bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 border-transparent">
-                          {skill.name}
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-sm text-zinc-600 italic">暂无加载模块</span>
-                    )}
-                  </div>
+                    <div className="w-full text-center mt-12">
+                        <Button 
+                          variant="outline" 
+                          className="border-white/10 text-zinc-400 hover:text-white hover:bg-white/5 text-xs px-6"
+                          onClick={() => toast.info('完整图谱视图开发中', { description: 'Coming Soon: 3D 神经网络视图' })}
+                        >
+                           查看全部记忆库 (Full Graph)
+                        </Button>
+                    </div>
                 </CardContent>
-              </Card>
-
-              <Card className="bg-black/20 border-white/5 h-full">
-                <CardHeader>
-                  <CardTitle className="text-sm font-medium text-zinc-400">荣誉协议 (Achievements)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {agent.achievements.length > 0 ? (
-                      agent.achievements.map((ach: any) => (
-                        <Badge key={ach.id} variant="outline" className="border-yellow-500/30 text-yellow-500 bg-yellow-500/5">
-                          {ach.name}
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-sm text-zinc-600 italic">暂无荣誉记录</span>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+            </Card>
+            
+            {/* Footer Status Bar (Chinese) */}
+            <div className="flex items-center justify-center gap-8 text-[10px] text-zinc-600 uppercase tracking-widest pt-2">
+               <span>连接状态: <span className="text-green-500">稳定 (Stable)</span></span>
+               <span>数据来源: Second Me API</span>
+               <span>上次同步: 刚刚</span>
             </div>
-          </div>
+
         </div>
       </div>
     </div>

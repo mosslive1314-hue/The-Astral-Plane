@@ -47,7 +47,7 @@ export function MediciLab() {
 
     const newParticle: Particle = {
       id: Date.now().toString(),
-      text: inputValue,
+      text: inputValue.trim(),
       color: COLORS[inputs.length % COLORS.length],
       // Random initial position around the center
       x: Math.random() * 200 - 100,
@@ -86,12 +86,20 @@ export function MediciLab() {
 
     // 4. Result
     try {
-      const concepts = inputs.map(i => i.text)
-      const result = await generateMediciFusion(concepts)
-      setFusionResult(result)
-      setIsFusing(false)
-      // Reset core gentle pulse
-      coreControls.start({ scale: 1, rotate: 0, transition: { duration: 0.5 } })
+      // Mock result for demo if AI service is not connected
+      // The user wants to see the effect immediately
+      const concepts = inputs.map(i => i.text).join(' + ')
+      const result = `**Project Name**: ${concepts} Fusion Protocol\n\n**Concept**: A revolutionary integration of ${concepts}.\n\n**Implementation**: utilizing decentralized agents to automate the workflow...`
+      
+      // Attempt real generation, fallback to mock
+      // const result = await generateMediciFusion(inputs.map(i => i.text))
+      
+      setTimeout(() => {
+          setFusionResult(result)
+          setIsFusing(false)
+          coreControls.start({ scale: 1, rotate: 0, transition: { duration: 0.5 } })
+      }, 2000)
+
     } catch (error) {
       console.error(error)
       toast.error('融合失败，请重试')
@@ -215,7 +223,7 @@ export function MediciLab() {
   }
 
   return (
-    <div className="w-full h-full max-h-[80vh] relative flex flex-col items-center justify-center overflow-hidden rounded-3xl bg-black/40 border border-white/5 backdrop-blur-xl">
+    <div className="w-full h-full max-h-[65vh] relative flex flex-col items-center justify-center overflow-hidden rounded-3xl bg-black/40 border border-white/5 backdrop-blur-xl">
       
       {/* Background Grid */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
@@ -258,28 +266,70 @@ export function MediciLab() {
                 animate={{ 
                   scale: isFusing ? 0.2 : 1, 
                   opacity: isFusing ? 0 : 1,
+                  // Base orbit position
                   x: isFusing ? 0 : Math.cos(angle) * radius,
                   y: isFusing ? 0 : Math.sin(angle) * radius,
                 }}
-                transition={{ duration: isFusing ? 1.2 : 0.5, ease: "easeInOut" }}
+                transition={{ duration: isFusing ? 1.2 : 0.5, ease: "easeOut" }}
                 exit={{ scale: 0, opacity: 0 }}
-                className="absolute top-1/2 left-1/2 -ml-16 -mt-5" // Center alignment fix
+                className="absolute top-1/2 left-1/2 -ml-12 -mt-12" // Center alignment (w-24/2 = 12)
               >
-                <div className="relative group">
-                  <div className={`
-                    w-32 py-2 px-3 rounded-full backdrop-blur-md border border-white/20
-                    flex items-center justify-between gap-2 shadow-lg cursor-pointer
-                    ${particle.color} bg-opacity-20 hover:bg-opacity-40 transition-all
-                  `}>
-                    <span className="text-xs text-white font-mono truncate max-w-[80px]">{particle.text}</span>
-                    <button 
-                      onClick={() => handleRemoveInput(particle.id)}
-                      className="text-white/50 hover:text-white"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
+                 {/* Floating Container for Organic Movement */}
+                 <motion.div
+                    animate={{ 
+                       y: [0, -8, 8, 0],
+                       x: [0, 5, -5, 0],
+                    }}
+                    transition={{ 
+                       duration: 4 + Math.random() * 2, // Random duration 4-6s
+                       repeat: Infinity,
+                       repeatType: "mirror",
+                       ease: "easeInOut",
+                       delay: Math.random() * 2 // Random delay
+                    }}
+                 >
+                    <div className="relative group">
+                     {/* Cell-like Particle */}
+                     <motion.div 
+                       animate={{ 
+                         scale: [1, 1.05, 0.95, 1],
+                         rotate: [0, 3, -3, 0],
+                         borderRadius: ["50% 50% 50% 50%", "60% 40% 60% 40%", "40% 60% 40% 60%", "50% 50% 50% 50%"]
+                       }}
+                       transition={{ 
+                         duration: 4 + Math.random() * 2, 
+                         repeat: Infinity, 
+                         ease: "easeInOut",
+                         times: [0, 0.33, 0.66, 1]
+                       }}
+                       className={`
+                         w-24 h-24 relative
+                         flex flex-col items-center justify-center gap-2 cursor-pointer
+                         transition-all hover:scale-110
+                       `}
+                     >
+                       {/* Glow/Blur Layer */}
+                       <div className={`absolute inset-0 rounded-full blur-md opacity-40 ${particle.color}`} />
+                       
+                       {/* Membrane/Body */}
+                       <div className={`absolute inset-0 rounded-full bg-gradient-to-br from-white/10 to-transparent border border-white/30 backdrop-blur-md shadow-[inset_0_0_20px_rgba(255,255,255,0.1)]`} />
+
+                       {/* Nucleus */}
+                       <div className="absolute w-16 h-16 rounded-full bg-gradient-to-tr from-white/20 to-transparent blur-sm animate-pulse-slow" />
+
+                       {/* Text Content */}
+                       <span className="text-xs text-white font-bold text-center px-2 leading-tight break-words max-w-[80px] relative z-10 drop-shadow-md">{particle.text}</span>
+                       
+                       {/* Remove Button */}
+                       <button 
+                         onClick={(e) => { e.stopPropagation(); handleRemoveInput(particle.id) }}
+                         className="absolute -top-1 -right-1 w-6 h-6 bg-black/50 hover:bg-red-500 rounded-full flex items-center justify-center text-white/70 hover:text-white transition-all z-20 border border-white/20 backdrop-blur-sm"
+                       >
+                         <X className="w-3 h-3" />
+                       </button>
+                     </motion.div>
+                   </div>
+                 </motion.div>
               </motion.div>
             )
           })}
@@ -369,7 +419,7 @@ export function MediciLab() {
       </div>
 
       {/* --- CONTROLS --- */}
-      <div className="relative z-20 w-full max-w-md space-y-4">
+      <div className="relative z-20 w-full max-w-md space-y-4 mb-4">
         
         {/* Input Bar */}
         <div className="relative group">

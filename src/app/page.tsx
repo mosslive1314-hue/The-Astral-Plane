@@ -110,14 +110,10 @@ function HomePageContent() {
             {/* Background Decor */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-indigo-500/10 blur-[120px] rounded-full opacity-40 pointer-events-none" />
             
-            <h1 className="relative text-7xl font-bold text-white tracking-tight pb-2 font-sans">
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-white to-purple-300 animate-gradient">
-                灵界
-              </span>
-            </h1>
-            <p className="relative text-2xl text-zinc-300 font-light tracking-wide max-w-2xl mx-auto leading-relaxed">
-              这里是价值的交换之地 也是需求的埋骨之所<br/>
-              所有的方案、技能与任务都在此交汇
+            <p className="relative text-xl text-zinc-300 font-light tracking-wide max-w-3xl mx-auto leading-relaxed">
+              这里是 <span className="text-white font-semibold">灵界</span> —— 基于 <span className="text-emerald-400 font-bold">通爻</span> 协议构建的价值交换网络。<br/>
+              我们与 <span className="text-blue-400 font-bold">Second Me</span> 深度融合，让您的数字分身在此通过协作与交易，<br/>
+              将灵感转化为真实的资产与影响力。
             </p>
           </div>
           

@@ -189,7 +189,7 @@ export function DigitalTwinPanel() {
                 <div className="text-xs text-zinc-600 p-2 text-center border border-dashed border-zinc-800 rounded flex flex-col gap-2">
                   <span>暂无激活的共鸣</span>
                   <a 
-                    href="https://second.me" 
+                    href="https://auth.second.me/oauth/authorize?client_id=27fc9c68-0479-4777-a04a-75c290386733&redirect_uri=http://localhost:3000/api/auth/callback&response_type=code&scope=user.info%20user.info.shades%20chat%20note.add%20voice" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="text-purple-400 hover:text-purple-300 underline"

@@ -37,7 +37,7 @@ export default function ResonancePage() {
               </span>
             </h1>
             <p className="relative text-xl text-zinc-300 font-light tracking-wide">
-              广播灵感之波 在共振中迸发全新的灵光
+              广播灵感，在共振中迸发全新的灵光
             </p>
           </div>
           

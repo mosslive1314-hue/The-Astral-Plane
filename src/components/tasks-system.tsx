@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CheckCircle, Coins, Search, Plus, Filter, User, Mic, Send, Volume2 } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
@@ -19,6 +20,7 @@ export function TasksSystem() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'high_reward' | 'easy'>('all')
   const [activeTab, setActiveTab] = useState('browse')
+  const [selectedTask, setSelectedTask] = useState<any>(null)
   
   // 自动填充
   const action = searchParams.get('action')
@@ -93,11 +95,15 @@ export function TasksSystem() {
   }
 
   const handleAcceptTask = async (taskId: string) => {
-    if (!agent) return
+    if (!agent) {
+      toast.error('请先登录后接取任务')
+      return
+    }
     
     try {
       await acceptTask(taskId, agent.id)
       toast.success('接单成功！请按时交付')
+      setSelectedTask(null) // Close dialog if open
       loadTasks()
     } catch (error) {
       toast.error('接单失败')
@@ -163,7 +169,11 @@ export function TasksSystem() {
         ) : (
           <div className="grid grid-cols-1 gap-4">
             {filteredTasks.map(task => (
-              <Card key={task.id} className="bg-black/20 border-white/5 hover:border-green-500/30 transition-all group">
+              <Card 
+                key={task.id} 
+                className="bg-black/20 border-white/5 hover:border-green-500/30 transition-all group cursor-pointer"
+                onClick={() => setSelectedTask(task)}
+              >
                 <CardContent className="p-5 flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
@@ -198,7 +208,10 @@ export function TasksSystem() {
                       <Button 
                         size="sm" 
                         className="bg-green-600 hover:bg-green-700 text-white w-full"
-                        onClick={() => handleAcceptTask(task.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleAcceptTask(task.id)
+                        }}
                       >
                         接取任务
                       </Button>
@@ -213,6 +226,72 @@ export function TasksSystem() {
           </div>
         )}
       </TabsContent>
+
+      <Dialog open={!!selectedTask} onOpenChange={(open) => !open && setSelectedTask(null)}>
+        <DialogContent className="bg-slate-900 border-white/10 text-white sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <span>{selectedTask?.title}</span>
+              <Badge variant="outline" className={`text-xs border-zinc-700 ${selectedTask?.status === 'open' ? 'text-green-400' : 'text-zinc-500'}`}>
+                {selectedTask?.status === 'open' ? '招募中' : '进行中'}
+              </Badge>
+            </DialogTitle>
+            <DialogDescription className="text-zinc-400">
+               由 {selectedTask?.publisher?.name || 'Unknown'} 发布
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedTask && (
+            <div className="space-y-6 pt-4">
+              <div className="p-4 bg-white/5 rounded-xl border border-white/5">
+                <h4 className="text-sm font-semibold text-zinc-300 mb-2">任务描述</h4>
+                <p className="text-sm text-zinc-400 leading-relaxed whitespace-pre-wrap">
+                  {selectedTask.description}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-black/20 rounded-lg">
+                  <div className="text-xs text-zinc-500 mb-1">悬赏金额</div>
+                  <div className="text-xl font-mono font-bold text-amber-400 flex items-center gap-1">
+                    <Coins className="w-5 h-5" />
+                    {selectedTask.reward}
+                  </div>
+                </div>
+                <div className="p-3 bg-black/20 rounded-lg">
+                  <div className="text-xs text-zinc-500 mb-1">任务 ID</div>
+                  <div className="text-sm font-mono text-zinc-400 truncate">{selectedTask.id}</div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-semibold text-zinc-300 mb-2">所需技能</h4>
+                <div className="flex flex-wrap gap-2">
+                  {(Array.isArray(selectedTask.required_skills) ? selectedTask.required_skills : []).map((skill: string) => (
+                    <Badge key={skill} variant="secondary" className="bg-white/10 text-zinc-300">
+                      {skill}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t border-white/10">
+                <Button className="flex-1 bg-white/10 hover:bg-white/20" onClick={() => setSelectedTask(null)}>
+                  关闭
+                </Button>
+                {selectedTask.status === 'open' && selectedTask.publisher_id !== agent?.id && (
+                  <Button 
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                    onClick={() => handleAcceptTask(selectedTask.id)}
+                  >
+                    立即接取任务
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* 发布任务 */}
       <TabsContent value="post">

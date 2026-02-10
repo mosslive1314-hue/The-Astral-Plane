@@ -174,17 +174,9 @@ export function ResonanceEngine() {
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-8 -mt-24">
+    <div className="w-full max-w-4xl mx-auto space-y-8">
       {/* LingBo Emitter (灵波发射器) */}
       <div className="relative flex flex-col items-center justify-center">
-        {/* Title */}
-        <h1 className="text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-white to-purple-400/50 mb-2 tracking-tighter select-none">
-           灵 波
-        </h1>
-        <p className="text-zinc-400 mb-8 font-light tracking-widest text-sm uppercase opacity-80">
-           广播灵感直播，在共振中迸发全新的灵光
-        </p>
-
         {/* 动态扩散光圈 (LingBo Effect) */}
         {isBroadcasting && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
