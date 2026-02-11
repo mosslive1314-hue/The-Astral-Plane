@@ -40,7 +40,8 @@ export function MediciEffect() {
             description: item.skill.description,
             rarity: item.skill.rarity,
             basePrice: item.skill.base_price,
-            currentPrice: item.skill.base_price, // 简化处理
+            currentPrice: item.skill.base_price,
+            price: item.skill.base_price,
             priceHistory: [],
             seller: agent.name,
             sellerLevel: agent.level,

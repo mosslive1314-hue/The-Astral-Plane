@@ -1,21 +1,20 @@
-
-const SECONDME_API_BASE = 'https://api.second.me/api/v1'
-
 export async function exchangeCodeForToken(code: string) {
   const clientId = process.env.SECONDME_CLIENT_ID
   const clientSecret = process.env.SECONDME_CLIENT_SECRET
   const redirectUri = process.env.SECONDME_REDIRECT_URI
 
-  const res = await fetch('https://auth.second.me/oauth/token', {
+  const params = new URLSearchParams({
+    grant_type: 'authorization_code',
+    code: code,
+    redirect_uri: redirectUri!,
+    client_id: clientId!,
+    client_secret: clientSecret!
+  })
+
+  const res = await fetch(`${process.env.SECONDME_API_BASE_URL}/api/oauth/token/code`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      grant_type: 'authorization_code',
-      client_id: clientId,
-      client_secret: clientSecret,
-      redirect_uri: redirectUri,
-      code
-    })
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString()
   })
 
   if (!res.ok) {
@@ -24,11 +23,25 @@ export async function exchangeCodeForToken(code: string) {
     throw new Error('Failed to exchange token')
   }
 
-  return res.json()
+  const result = await res.json()
+
+  if (result.code !== 0) {
+    throw new Error(`Token error: ${result.message || 'Unknown error'}`)
+  }
+
+  const tokenData = result.data
+
+  return {
+    access_token: tokenData.accessToken,
+    refresh_token: tokenData.refreshToken,
+    token_type: tokenData.tokenType,
+    expires_in: tokenData.expiresIn,
+    scope: tokenData.scope
+  }
 }
 
 export async function getUserInfo(accessToken: string) {
-  const res = await fetch(`${SECONDME_API_BASE}/user/info`, {
+  const res = await fetch(`${process.env.SECONDME_API_BASE_URL}/api/secondme/user/info`, {
     headers: {
       'Authorization': `Bearer ${accessToken}`
     }
@@ -39,60 +52,73 @@ export async function getUserInfo(accessToken: string) {
   }
 
   const json = await res.json()
-  // Adapt to your app's user structure
+
+  if (json.code !== 0) {
+    throw new Error(`User info error: ${json.message || 'Unknown error'}`)
+  }
+
+  const userData = json.data
+
   return {
-    id: json.data.id || 'unknown_id', // Ensure ID exists
-    name: json.data.name,
-    email: json.data.email, // Might need extra scope
-    avatar: json.data.avatar,
-    bio: json.data.bio
+    id: userData.id || 'unknown_id',
+    name: userData.name,
+    email: userData.email,
+    avatar: userData.avatar,
+    bio: userData.bio
   }
 }
 
 export async function getUserShades(accessToken: string) {
-    const res = await fetch(`${SECONDME_API_BASE}/user/shades`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`
-      }
-    })
-  
-    if (!res.ok) return []
-    const json = await res.json()
-    return json.data || []
-  }
-
-export async function getUserSoftMemory(accessToken: string) {
-  // Hypothetical endpoint based on docs description
-  const res = await fetch(`${SECONDME_API_BASE}/user/soft-memory`, {
+  const res = await fetch(`${process.env.SECONDME_API_BASE_URL}/api/secondme/user/shades`, {
     headers: {
       'Authorization': `Bearer ${accessToken}`
     }
   })
 
   if (!res.ok) return []
+
   const json = await res.json()
+
+  if (json.code !== 0) return []
+
+  return json.data || []
+}
+
+export async function getUserSoftMemory(accessToken: string) {
+  const res = await fetch(`${process.env.SECONDME_API_BASE_URL}/api/secondme/user/soft-memory`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`
+    }
+  })
+
+  if (!res.ok) return []
+
+  const json = await res.json()
+
+  if (json.code !== 0) return []
+
   return json.data || []
 }
 
 export async function chatWithAgent(accessToken: string, message: string) {
-    const res = await fetch(`${SECONDME_API_BASE}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'second-me-agent',
-        messages: [
-          { role: 'user', content: message }
-        ],
-        stream: false, // For simplicity in this helper
-      }),
-    });
-    
-    if (!res.ok) {
-        throw new Error('Failed to chat with agent')
-    }
+  const res = await fetch(`${process.env.SECONDME_API_BASE_URL}/api/secondme/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'second-me-agent',
+      messages: [
+        { role: 'user', content: message }
+      ],
+      stream: false
+    }),
+  })
 
-    return res.json()
+  if (!res.ok) {
+    throw new Error('Failed to chat with agent')
+  }
+
+  return res.json()
 }

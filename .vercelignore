@@ -1,0 +1,17 @@
+# Python service
+python-service/
+
+# Scripts
+scripts/
+
+# Database
+supabase/
+
+# Dev files
+DATA_SYNC.md
+SETUP.md
+TOWOW_*.md
+check-notes-table.js
+download-assets.js
+eslint.config.mjs
+postcss.config.mjs

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
-import { User, Command, ShoppingBag, Wand2, LogOut, Coins, Shield, Star, Briefcase } from 'lucide-react'
+import { User, Command, ShoppingBag, Wand2, LogOut, Coins, Shield, Star, Briefcase, MessageSquare, Brain } from 'lucide-react'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 
 import { MarketTicker, CREATION_TICKER_ITEMS, VALUE_TICKER_ITEMS } from '@/components/dashboard/market-ticker'
@@ -35,13 +35,13 @@ export function Navigation() {
                 <Link href="/resonance" className={cn("text-xs font-bold tracking-widest hover:text-purple-400 transition-colors", pathname === '/resonance' ? "text-white" : "text-zinc-500")}>灵波</Link>
                 <Link href="/lingxu" className={cn("text-xs font-bold tracking-widest hover:text-purple-400 transition-colors", pathname === '/lingxu' ? "text-white" : "text-zinc-500")}>灵墟</Link>
              </div>
-             <div className="flex gap-8 pointer-events-auto pl-32">
+             <div className="flex gap-8 pointer-events-auto pl-32 items-center">
                 <Link href="/studio" className={cn("text-xs font-bold tracking-widest hover:text-purple-400 transition-colors", pathname === '/studio' ? "text-white" : "text-zinc-500")}>灵境</Link>
                 
-                {/* LingTi with Integrated Profile Hover */}
+                {/* LingTi with Hover Profile Card */}
                 <HoverCard openDelay={0} closeDelay={200}>
                   <HoverCardTrigger asChild>
-                    <Link href="/profile" className={cn("text-xs font-bold tracking-widest hover:text-purple-400 transition-colors cursor-pointer", pathname === '/profile' ? "text-white" : "text-zinc-500")}>
+                    <Link href="/profile" className={cn("text-xs font-bold tracking-widest hover:text-purple-400 transition-colors", pathname === '/profile' ? "text-white" : "text-zinc-500")}>
                       灵体
                     </Link>
                   </HoverCardTrigger>
@@ -84,6 +84,14 @@ export function Navigation() {
                             <span className="text-blue-400 font-mono font-bold">{agent?.skills?.length || 0}</span>
                           </div>
                         </div>
+                        <Link href={`/chats?agentId=${agent?.id}`} className="flex items-center gap-2 text-sm text-zinc-300 hover:text-white hover:bg-white/10 py-2 px-3 rounded transition-colors">
+                          <MessageSquare className="w-4 h-4" />
+                          查看对话历史
+                        </Link>
+                        <Link href="/talent-discovery" className="flex items-center gap-2 text-sm text-zinc-300 hover:text-white hover:bg-white/10 py-2 px-3 rounded transition-colors">
+                          <Brain className="w-4 h-4" />
+                          天赋深度挖掘
+                        </Link>
                      </div>
 
                      <div className="p-2 border-t border-white/10 bg-white/5">

@@ -2,8 +2,12 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabaseAdmin = supabaseServiceRoleKey
+  ? createClient(supabaseUrl, supabaseServiceRoleKey)
+  : createClient(supabaseUrl, supabaseAnonKey)
 
 export interface DatabaseUser {
   id: string
@@ -27,16 +31,12 @@ export interface DatabaseAgent {
   updated_at: string
 }
 
-/**
- * 创建或更新用户，并确保用户有一个Agent
- */
 export async function createOrUpdateUser(secondmeId: string, userInfo: {
   nickname?: string
   avatar?: string
   shades?: string[]
 }) {
   try {
-    // 1. 查找或创建用户
     const { data: existingUser, error: selectError } = await supabase
       .from('users')
       .select('*')
@@ -46,7 +46,6 @@ export async function createOrUpdateUser(secondmeId: string, userInfo: {
     let user: DatabaseUser
 
     if (selectError || !existingUser) {
-      // 创建新用户
       const { data: newUser, error: insertError } = await supabase
         .from('users')
         .insert({
@@ -66,7 +65,6 @@ export async function createOrUpdateUser(secondmeId: string, userInfo: {
       user = newUser
       console.log('[DB] Created new user:', user.id)
     } else {
-      // 更新现有用户
       const { data: updatedUser, error: updateError } = await supabase
         .from('users')
         .update({
@@ -88,7 +86,6 @@ export async function createOrUpdateUser(secondmeId: string, userInfo: {
       console.log('[DB] Updated user:', user.id)
     }
 
-    // 2. 确保用户有一个 Agent
     const { data: existingAgent } = await supabase
       .from('agents')
       .select('*')
@@ -98,15 +95,14 @@ export async function createOrUpdateUser(secondmeId: string, userInfo: {
     let agent: DatabaseAgent
 
     if (!existingAgent) {
-      // 为新用户创建默认 Agent
       const { data: newAgent, error: agentError } = await supabase
         .from('agents')
         .insert({
           user_id: user.id,
           name: userInfo.nickname || 'Agent',
           level: 1,
-          coins: 1000, // 初始金币
-          credit_score: 500, // 初始信用分
+          coins: 1000,
+          credit_score: 500,
           avatar: userInfo.avatar || null,
         })
         .select()
@@ -131,9 +127,6 @@ export async function createOrUpdateUser(secondmeId: string, userInfo: {
   }
 }
 
-/**
- * 获取用户的 Agent
- */
 export async function getUserAgent(userId: string): Promise<DatabaseAgent | null> {
   try {
     const { data, error } = await supabase
@@ -154,9 +147,6 @@ export async function getUserAgent(userId: string): Promise<DatabaseAgent | null
   }
 }
 
-/**
- * 获取用户的 SecondMe ID
- */
 export async function getUserBySecondMeId(secondmeId: string): Promise<DatabaseUser | null> {
   try {
     const { data, error } = await supabase

@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, Suspense } from 'react'
+import { useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuthStore } from '@/store/auth'
-import { supabase } from '@/lib/database'
+import { exchangeCodeForToken, getSecondMeUserInfo } from '@/app/actions/oauth2'
+import { createOrUpdateUser } from '@/lib/database'
+import { toast } from 'sonner'
 
 function AuthCallbackContent() {
   const router = useRouter()
@@ -12,61 +14,121 @@ function AuthCallbackContent() {
 
   useEffect(() => {
     const handleCallback = async () => {
-      const accessToken = searchParams.get('access_token')
-      const refreshToken = searchParams.get('refresh_token')
+      const code = searchParams.get('code')
+      const state = searchParams.get('state')
       const error = searchParams.get('error')
 
       if (error) {
-        console.error('Auth error:', error)
+        console.error('[OAuth2] 授权失败:', error)
+        toast.error('登录失败', {
+          description: `授权被拒绝: ${error}`,
+          duration: 5000
+        })
         router.push('/login?error=' + error)
         return
       }
 
-      if (accessToken && refreshToken) {
-        // 设置 tokens
-        setTokens({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-          expires_in: 7200, // 默认 2 小时
-          token_type: 'Bearer',
+      if (!code || !state) {
+        console.error('[OAuth2] 缺少必要的参数')
+        toast.error('登录失败', {
+          description: '缺少授权码或状态参数',
+          duration: 5000
+        })
+        router.push('/login?error=invalid_params')
+        return
+      }
+
+      try {
+        const tokenResponse = await exchangeCodeForToken(code, state)
+        
+        if (!tokenResponse) {
+          toast.error('登录失败', {
+            description: '无法交换访问令牌',
+            duration: 5000
+          })
+          router.push('/login?error=token_exchange_failed')
+          return
+        }
+
+        console.log('[OAuth2] Token获取成功:', {
+          accessToken: tokenResponse.accessToken.substring(0, 10) + '...',
+          expiresIn: tokenResponse.expiresIn
         })
 
-        // 获取用户信息
-        try {
-          // 1. 获取 SecondMe 用户信息
-          // 这里我们应该调用 /api/user/info，但为了简单起见，我们假设后端已经同步了用户
-          // 我们可以直接从 Supabase 获取当前 Agent 信息
-          
-          // 在实际 OAuth 流程中，我们需要用 access_token 去换取用户信息
-          // 但由于我们的 callback route 是在服务端做的 code exchange，它没法直接把 user info 传给客户端
-          // 所以这里我们可以在客户端再调一次后端 API，或者直接用 token 解码（如果不安全）
-          
-          // 临时方案：直接跳转首页，由首页的 AuthGuard 去 fetchUser
-          // 但为了用户体验，我们在这里尝试 fetch 一次
-          
-          // 假设我们在 state 中存了 user_id? 不，我们在后端 syncUser 了
-          
-          // 简单的做法：只存 token，让 store 的 persist 机制工作，然后跳转
-          // 首页的 useEffect 会检测到 isAuthenticated，然后去 fetch 数据
-          
-          router.push('/')
-        } catch (err) {
-          console.error('Failed to setup user session', err)
-          router.push('/login?error=session_setup_failed')
+        const userInfo = await getSecondMeUserInfo(tokenResponse.accessToken)
+        
+        if (!userInfo) {
+          console.error('[OAuth2] 获取用户信息失败')
+          toast.error('登录失败', {
+            description: '无法获取用户信息',
+            duration: 5000
+          })
+          router.push('/login?error=user_info_failed')
+          return
         }
-      } else {
-        router.push('/login?error=no_token')
+
+        console.log('[OAuth2] 用户信息获取成功:', {
+          name: userInfo.name,
+          avatar: userInfo.avatar ? '已设置' : '未设置',
+          shades: userInfo.shades?.length || 0
+        })
+
+        setTokens({
+          access_token: tokenResponse.accessToken,
+          refresh_token: tokenResponse.refreshToken,
+          expires_in: tokenResponse.expiresIn,
+          token_type: tokenResponse.tokenType,
+        })
+
+        const { user, agent } = await createOrUpdateUser(userInfo.name, {
+          nickname: userInfo.name,
+          avatar: userInfo.avatar,
+          shades: userInfo.shades,
+        })
+
+        setUser({
+          id: user.id,
+          nickname: user.nickname || userInfo.name,
+          avatar: user.avatar || undefined,
+          shades: user.shades || []
+        })
+        setAgent({
+          id: agent.id,
+          userId: agent.user_id,
+          name: agent.name,
+          level: agent.level,
+          coins: agent.coins,
+          creditScore: agent.credit_score,
+          avatar: agent.avatar || undefined,
+          skills: [],
+          achievements: []
+        })
+
+        toast.success('登录成功', {
+          description: `欢迎回来，${userInfo.name}！`,
+          duration: 3000
+        })
+
+        router.push('/')
+      } catch (err: any) {
+        console.error('[OAuth2] 处理回调失败:', err)
+        toast.error('登录失败', {
+          description: err.message || '处理授权回调时发生错误',
+          duration: 5000
+        })
+        router.push('/login?error=callback_failed')
       }
     }
 
     handleCallback()
-  }, [router, searchParams, setTokens])
+  }, [router, searchParams, setTokens, setUser, setAgent])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
-        <p className="text-zinc-400">正在验证身份...</p>
+        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-500 mx-auto mb-6"></div>
+        <h2 className="text-xl font-bold text-white mb-2">正在验证身份...</h2>
+        <p className="text-zinc-400">请稍候，我们正在完成登录流程</p>
       </div>
     </div>
   )
@@ -74,15 +136,12 @@ function AuthCallbackContent() {
 
 export default function AuthCallbackPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
-          <p className="text-zinc-400">加载中...</p>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-500 mx-auto mb-6"></div>
+        <h2 className="text-xl font-bold text-white mb-2">加载中...</h2>
+        <p className="text-zinc-400">请稍候...</p>
       </div>
-    }>
-      <AuthCallbackContent />
-    </Suspense>
+    </div>
   )
 }

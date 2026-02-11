@@ -34,7 +34,7 @@ type InsightData = {
 
 export default function NotesPage() {
   const router = useRouter()
-  const { isAuthenticated, agent, tokens, setAgent, setUser } = useAuthStore()
+  const { isAuthenticated, _hasHydrated, agent, tokens, setAgent, setUser } = useAuthStore()
   const [notes, setNotes] = useState<Note[]>([])
   // 默认不加载，只有当有 agentId 时才开始加载
   const [loading, setLoading] = useState(false)
@@ -76,7 +76,7 @@ export default function NotesPage() {
     }
     
     restoreSession()
-  }, [isAuthenticated, agent?.id, tokens, setAgent, setUser])
+  }, [isAuthenticated, agent?.id, tokens?.access_token])
   
   // 新笔记表单状态
   const [newTitle, setNewTitle] = useState('')
@@ -87,10 +87,10 @@ export default function NotesPage() {
   const [insight, setInsight] = useState<InsightData | null>(null)
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (_hasHydrated && !isAuthenticated) {
       router.push('/login')
     }
-  }, [isAuthenticated, router])
+  }, [_hasHydrated, isAuthenticated])
 
   useEffect(() => {
     if (agent?.id) {
@@ -421,7 +421,11 @@ export default function NotesPage() {
               const ModelIcon = model?.icon
               
               return (
-                <Card key={note.id} className={`group transition-all hover:border-purple-500/30 ${model ? model.border : ''}`}>
+                <Card 
+                  key={note.id} 
+                  className={`group transition-all hover:border-purple-500/30 cursor-pointer ${model ? model.border : ''}`}
+                  onClick={() => router.push(`/notes/${note.id}`)}
+                >
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2">
@@ -433,7 +437,10 @@ export default function NotesPage() {
                         <h3 className="font-semibold text-white text-lg">{note.title}</h3>
                       </div>
                       <button 
-                        onClick={() => handleDelete(note.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDelete(note.id)
+                        }}
                         className="text-zinc-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <Trash2 className="w-4 h-4" />

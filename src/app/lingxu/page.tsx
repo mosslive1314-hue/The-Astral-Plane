@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Navigation } from '@/components/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -71,22 +72,54 @@ const MOCK_SOLUTIONS = [
   }
 ]
 
-export default function LingXuPage() {
+function LingXuPageContent() {
+  const searchParams = useSearchParams()
   const router = useRouter()
   const { isAuthenticated, agent: currentAgent } = useAuthStore()
+  const isMounted = useRef(true)
   const [skills, setSkills] = useState<MarketSkill[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'sale' | 'rental'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedSolution, setSelectedSolution] = useState<any>(null)
 
+  const tab = searchParams.get('tab') || 'market'
+  const subtab = searchParams.get('subtab') || 'solutions'
+  const urlSearch = searchParams.get('search') || ''
+  const newTask = searchParams.get('newTask') === 'true'
+
   useEffect(() => {
     if (!isAuthenticated) {
       router.push('/login')
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated])
+
+  useEffect(() => {
+    isMounted.current = true
+    return () => {
+      isMounted.current = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (urlSearch) {
+      setSearchQuery(urlSearch)
+    }
+  }, [urlSearch])
+
+  useEffect(() => {
+    if (newTask) {
+      toast.success('任务发布成功', {
+        description: '您的新任务已置顶显示',
+        duration: 4000
+      })
+      router.replace('/lingxu?tab=tasks')
+    }
+  }, [newTask, router])
 
   const fetchSkills = async () => {
+    if (!isMounted.current) return
+    
     try {
       setLoading(true)
       const { data, error } = await supabase
@@ -113,6 +146,7 @@ export default function LingXuPage() {
         `)
         .eq('status', 'active')
 
+      if (!isMounted.current) return
       if (error) throw error
 
       if (data) {
@@ -124,6 +158,7 @@ export default function LingXuPage() {
           rarity: item.skill.rarity,
           basePrice: item.skill.base_price,
           currentPrice: item.current_price,
+          price: item.current_price,
           priceHistory: generatePriceHistory(item.skill.base_price, item.current_price),
           seller: item.seller.name,
           sellerLevel: item.seller.level,
@@ -237,7 +272,7 @@ export default function LingXuPage() {
           </p>
         </div>
 
-        <Tabs defaultValue="market" className="w-full flex flex-col items-center">
+        <Tabs defaultValue={tab} className="w-full flex flex-col items-center">
           <TabsList className="bg-black/20 border border-white/10 p-1 mb-8 rounded-xl">
             <TabsTrigger value="market" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white px-8 py-2">
               <ShoppingBag className="w-4 h-4 mr-2" />
@@ -250,7 +285,7 @@ export default function LingXuPage() {
           </TabsList>
 
           <TabsContent value="market" className="w-full space-y-8">
-            <Tabs defaultValue="solutions" className="w-full space-y-6 flex flex-col items-center">
+            <Tabs defaultValue={subtab} className="w-full space-y-6 flex flex-col items-center">
               <TabsList className="bg-white/5 border border-white/10 p-1">
                 <TabsTrigger value="solutions" className="px-6 text-sm">方案合约</TabsTrigger>
                 <TabsTrigger value="spot" className="px-6 text-sm">技能现货</TabsTrigger>
@@ -333,7 +368,7 @@ export default function LingXuPage() {
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
                     <p className="text-zinc-400">正在加载市场数据...</p>
                   </div>
-                ) : (
+                ) : filteredSkills.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {filteredSkills.map(skill => (
                       <SkillCard
@@ -343,6 +378,17 @@ export default function LingXuPage() {
                         onRent={skill.isRental ? () => handleRent(skill) : undefined}
                       />
                     ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-20">
+                    <p className="text-zinc-500 mb-4">未找到匹配的技能</p>
+                    <Button 
+                      variant="outline" 
+                      className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+                      onClick={() => setSearchQuery('')}
+                    >
+                      清除搜索条件
+                    </Button>
                   </div>
                 )}
               </TabsContent>
@@ -442,5 +488,13 @@ export default function LingXuPage() {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+export default function LingXuPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900" />}>
+      <LingXuPageContent />
+    </Suspense>
   )
 }

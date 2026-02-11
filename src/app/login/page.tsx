@@ -2,27 +2,35 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { getOAuthUrl } from '@/lib/oauth'
+import { initiateOAuth2Login } from '@/app/actions/oauth2'
 import { useAuthStore } from '@/store/auth'
 import { ShoppingBag, Lightbulb, TrendingUp, User, Sparkles } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { isAuthenticated, setTokens, setUser, setAgent } = useAuthStore()
+  const { isAuthenticated, setTokens, setUser, setAgent, logout } = useAuthStore()
   const [isLoading, setIsLoading] = useState(false)
 
-  // 使用 useEffect 处理重定向，避免在渲染期间调用 router.push
+  const handleForceLogout = () => {
+    logout()
+    localStorage.removeItem('agentcraft-auth')
+    window.location.reload()
+  }
+
+  const checkAuthStatus = () => {
+    const stored = localStorage.getItem('agentcraft-auth')
+    console.log('Stored auth:', stored)
+    console.log('isAuthenticated:', isAuthenticated)
+  }
+
   useEffect(() => {
-    if (isAuthenticated) {
-      router.push('/')
-    }
-  }, [isAuthenticated, router])
+    checkAuthStatus()
+  }, [])
 
   const handleLogin = async () => {
     setIsLoading(true)
     try {
-      const oauthUrl = getOAuthUrl()
-      window.location.href = oauthUrl
+      await initiateOAuth2Login()
     } catch (error) {
       console.error('Login error:', error)
       setIsLoading(false)
@@ -30,7 +38,6 @@ export default function LoginPage() {
   }
 
   const handleDemoMode = () => {
-    // 设置模拟用户和 Agent 数据
     setTokens({
       access_token: 'demo_token',
       refresh_token: 'demo_refresh',
@@ -134,6 +141,14 @@ export default function LoginPage() {
           <p className="text-center text-zinc-500 text-sm mt-6">
             登录即表示同意我们的服务条款和隐私政策
           </p>
+
+          {/* Debug: Force Logout Button */}
+          <button
+            onClick={handleForceLogout}
+            className="w-full mt-4 py-2 rounded-lg border border-red-500/30 text-red-400 text-sm hover:bg-red-500/10 transition-all"
+          >
+            清除登录状态（调试用）
+          </button>
         </div>
       </div>
     </div>

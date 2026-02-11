@@ -1,9 +1,8 @@
-// 常量配置
 export const API_CONFIG = {
-  BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://app.mindos.com/gate/lab',
-  OAUTH_URL: process.env.NEXT_PUBLIC_OAUTH_URL || 'https://go.second.me/oauth/',
-  CLIENT_ID: process.env.NEXT_PUBLIC_CLIENT_ID || '',
-  REDIRECT_URI: process.env.NEXT_PUBLIC_REDIRECT_URI || 'http://localhost:3000/api/auth/callback',
+  BASE_URL: process.env.SECONDME_API_BASE_URL || 'https://app.mindos.com/gate/lab',
+  OAUTH_URL: process.env.SECONDME_AUTH_URL || 'https://go.second.me/oauth/',
+  CLIENT_ID: process.env.SECONDME_CLIENT_ID || '',
+  REDIRECT_URI: process.env.SECONDME_REDIRECT_URI || 'http://localhost:3000/api/auth/callback',
 } as const
 
 export const RARITY_COLORS = {

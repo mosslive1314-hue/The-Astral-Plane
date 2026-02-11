@@ -16,76 +16,127 @@ function HomePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { isAuthenticated, setTokens, setUser, setAgent } = useAuthStore()
-  const [checkedUrlParams, setCheckedUrlParams] = useState(false)
+  const [isCheckingSession, setIsCheckingSession] = useState(false)
   const [isReady, setIsReady] = useState(false)
-
-  // ... (auth logic remains same)
+  const [hasCheckedSession, setHasCheckedSession] = useState(false)
 
   useEffect(() => {
-    // 首先检查 URL 中是否有 token（从 OAuth 回调过来）
-    const accessToken = searchParams.get('access_token')
-    const refreshToken = searchParams.get('refresh_token')
+    const checkAuthSession = async () => {
+      console.log('[HomePage] Checking auth session from cookies...')
+      
+      try {
+        const response = await fetch('/api/auth/session')
+          const sessionData = await response.json()
+          
+          console.log('[HomePage] Session data:', sessionData)
+          
+          if (sessionData.authenticated && sessionData.accessToken) {
+            console.log('[HomePage] Found valid session, initializing user...')
+            
+            // 获取用户信息并创建/更新 Agent
+            const userInfo = await getUserInfo(sessionData.accessToken)
+            console.log('[HomePage] User info received:', userInfo)
+            
+            setUser({
+              id: userInfo.id,
+              nickname: userInfo.nickname,
+              avatar: userInfo.avatar,
+              shades: [],
+            })
 
-    if (accessToken && refreshToken) {
-      // 设置 tokens
-      setTokens({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-        expires_in: 7200,
-        token_type: 'Bearer',
-      })
+            const { user, agent } = await syncUser(userInfo.id, {
+              nickname: userInfo.nickname,
+              avatar: userInfo.avatar,
+              shades: [],
+            })
+            console.log('[HomePage] User synced:', user.id, agent.id)
 
-      // 获取用户信息并创建/更新 Agent
-      const initializeUser = async () => {
-        try {
-          const userInfo = await getUserInfo(accessToken)
-          setUser({
-            id: userInfo.id,
-            nickname: userInfo.nickname,
-            avatar: userInfo.avatar,
-            shades: [],
-          })
+            setAgent({
+              id: agent.id,
+              userId: user.id,
+              name: agent.name,
+              level: agent.level,
+              coins: agent.coins,
+              creditScore: agent.credit_score,
+              avatar: agent.avatar || undefined,
+              skills: [],
+              achievements: [],
+            })
 
-          const { user, agent } = await syncUser(userInfo.id, {
-            nickname: userInfo.nickname,
-            avatar: userInfo.avatar,
-            shades: [],
-          })
+            // 注册 Agent 向量到共振引擎
+            try {
+              await fetch('/api/agents/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  userId: user.id,
+                  token: sessionData.accessToken
+                })
+              })
+              console.log('[HomePage] Agent vector registered successfully')
+            } catch (error) {
+              console.error('[HomePage] Failed to register agent vector:', error)
+            }
 
-          setAgent({
-            id: agent.id,
-            userId: user.id,
-            name: agent.name,
-            level: agent.level,
-            coins: agent.coins,
-            creditScore: agent.credit_score,
-            avatar: agent.avatar || undefined,
-            skills: [],
-            achievements: [],
-          })
-        } catch (error) {
-          console.error('[Auth] Failed to initialize user:', error)
-        }
+            // 设置 tokens 到 Zustand store
+            setTokens({
+              access_token: sessionData.accessToken,
+              refresh_token: sessionData.refreshToken,
+              expires_in: 7200,
+              token_type: 'Bearer',
+            })
+            
+            console.log('[HomePage] User initialized from cookies successfully')
+          } else {
+            console.log('[HomePage] No valid session found')
+          }
+      } catch (error) {
+        console.error('[HomePage] Error checking session:', error)
+      } finally {
+        setIsCheckingSession(false)
+        setHasCheckedSession(true)
       }
-
-      initializeUser()
-      router.replace('/')
-      return
     }
 
-    setCheckedUrlParams(true)
-  }, [router, searchParams, setTokens, setUser, setAgent])
+    // 只在首次加载时检查 session
+    if (!isCheckingSession) {
+      setIsCheckingSession(true)
+      checkAuthSession()
+    }
+  }, [])
+
+  // 处理认证状态变化
+  useEffect(() => {
+    if (!isCheckingSession && isAuthenticated) {
+      console.log('[HomePage] User is now authenticated, showing page...')
+      setIsReady(true)
+    }
+  }, [isCheckingSession, isAuthenticated])
+
+  // 检查是否从 OAuth 成功回调回来
+  const authSuccess = searchParams.get('auth_success')
+  useEffect(() => {
+    if (authSuccess === 'true') {
+      console.log('[HomePage] OAuth callback detected, clearing URL...')
+      router.replace('/')
+    }
+  }, [authSuccess, router])
 
   // 处理未认证状态的重定向
   useEffect(() => {
-    if (checkedUrlParams && !isAuthenticated) {
+    console.log('[HomePage] Auth state check:', { isCheckingSession, isAuthenticated, hasCheckedSession })
+    if (hasCheckedSession && !isAuthenticated) {
+      // 检查 session 完成，且未认证，跳转到登录页
+      console.log('[HomePage] Redirecting to login page...')
       router.push('/login')
-    } else if (checkedUrlParams && isAuthenticated) {
+    } else if (hasCheckedSession && isAuthenticated) {
+      // 已认证，显示页面
+      console.log('[HomePage] Showing home page...')
       setIsReady(true)
     }
-  }, [checkedUrlParams, isAuthenticated, router])
+  }, [isCheckingSession, isAuthenticated, hasCheckedSession, router])
 
-  if (!checkedUrlParams) {
+  if (isCheckingSession) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
         <div className="text-center">

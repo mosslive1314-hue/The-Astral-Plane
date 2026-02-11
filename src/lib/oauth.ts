@@ -108,7 +108,7 @@ export async function getUserInfo(accessToken: string) {
 export async function getUserShades(accessToken: string) {
   console.log('[OAuth] Fetching user shades...')
 
-  const response = await fetch(`${API_CONFIG.BASE_URL}/api/secondme/user/info/shades`, {
+  const response = await fetch(`${API_CONFIG.BASE_URL}/api/secondme/user/shades`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },

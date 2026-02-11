@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { User, Cpu, Database, Coins, Zap, RefreshCw, CheckCircle, Shield, Award } from 'lucide-react'
+import { User, Cpu, Database, Coins, Zap, RefreshCw, CheckCircle, Shield, Award, Brain, ArrowRight } from 'lucide-react'
 import { supabase } from '@/lib/database'
 import { getUserInfo, getUserSoftMemory } from '@/lib/secondme-api'
 
@@ -184,6 +184,34 @@ export default function ProfilePage() {
                </CardContent>
             </Card>
         </div>
+
+        <Card className="bg-gradient-to-br from-pink-900/20 to-purple-900/20 border-pink-500/20 hover:border-pink-500/40 transition-all mb-4 cursor-pointer group" onClick={() => router.push('/talent-discovery')}>
+            <CardContent className="p-6">
+               <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                     <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center shadow-lg shadow-pink-500/30 group-hover:scale-110 transition-transform">
+                        <Brain className="w-7 h-7 text-white" />
+                     </div>
+                     <div>
+                        <h3 className="text-lg font-bold text-white mb-1">天赋深度挖掘</h3>
+                        <p className="text-sm text-zinc-400">通过15轮深度访谈发现你的隐藏天赋</p>
+                     </div>
+                  </div>
+                  <ArrowRight className="w-6 h-6 text-zinc-500 group-hover:text-pink-400 group-hover:translate-x-1 transition-all" />
+               </div>
+               <div className="mt-4 flex items-center gap-4 text-xs text-zinc-500">
+                  <div className="flex items-center gap-1.5">
+                     <Zap className="w-3.5 h-3.5 text-amber-400" />
+                     <span>犀利挑战模式</span>
+                  </div>
+                  <div className="w-px h-3 bg-white/10" />
+                  <div className="flex items-center gap-1.5">
+                     <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                     <span>深度咨询模式</span>
+                  </div>
+               </div>
+            </CardContent>
+        </Card>
 
         <Card className="bg-black/30 border-white/10 overflow-hidden relative group mb-4">
             <div className="absolute inset-0 bg-gradient-to-b from-purple-900/10 to-transparent pointer-events-none" />

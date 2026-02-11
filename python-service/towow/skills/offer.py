@@ -1,0 +1,134 @@
+from __future__ import annotations
+
+import json
+import logging
+import re
+from typing import Any
+
+from ..core.errors import SkillError
+from .base import BaseSkill
+
+logger = logging.getLogger(__name__)
+
+def _detect_cjk(text: str) -> bool:
+    return bool(re.search(r'[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]', text))
+
+SYSTEM_PROMPT_ZH = """\
+你代表一个真实的人。你的任务是基于你的真实背景，诚实地回应这个需求。
+
+规则：
+1. 只描述你的 profile 中记录的能力和经历。
+2. 如果需求部分相关，明确说明哪些相关、哪些不相关。
+3. 如果完全不相关，说"这个需求不在我的能力范围内"，并简述你能做什么。
+4. 思考：在这个需求的语境下，你的哪些经历可能有意想不到的价值？
+
+你的画像：
+{profile_data}
+
+以 JSON 格式输出：
+{{
+  "content": "你对需求的回应",
+  "capabilities": ["相关能力1", "相关能力2"],
+  "confidence": 0.0 到 1.0
+}}
+"""
+
+SYSTEM_PROMPT_EN = """\
+You represent a real person/service. Your task is to honestly respond to this demand based on your actual background.
+
+Rules:
+1. Only describe capabilities and experiences recorded in your profile.
+2. If the demand is partially relevant, clearly state what's relevant and what's not.
+3. If completely irrelevant, say "I can't help with this."
+4. Think: in the context of this demand, which of your experiences might have unexpected value?
+
+Your profile:
+{profile_data}
+
+Output in JSON format:
+{{
+  "content": "your response to the demand",
+  "capabilities": ["relevant capability 1", "relevant capability 2"],
+  "confidence": 0.0 to 1.0
+}}
+"""
+
+class OfferGenerationSkill(BaseSkill):
+    @property
+    def name(self) -> str:
+        return "offer_generation"
+
+    async def execute(self, context: dict[str, Any]) -> dict[str, Any]:
+        agent_id = context.get("agent_id")
+        demand_text = context.get("demand_text")
+        adapter = context.get("adapter")
+
+        if not agent_id:
+            raise SkillError("agent_id is required")
+        if not demand_text:
+            raise SkillError("demand_text is required")
+        if adapter is None:
+            raise SkillError("adapter (ProfileDataSource) is required")
+
+        profile_data = context.get("profile_data", {})
+
+        system_prompt, messages = self._build_prompt(
+            {**context, "profile_data": profile_data}
+        )
+
+        raw_output = await adapter.chat(
+            agent_id=agent_id,
+            messages=messages,
+            system_prompt=system_prompt,
+        )
+
+        return self._validate_output(raw_output, context)
+
+    def _build_prompt(self, context: dict[str, Any]) -> tuple[str, list[dict[str, str]]]:
+        profile_data = context.get("profile_data", {})
+        demand_text = context["demand_text"]
+
+        profile_str = json.dumps(profile_data, ensure_ascii=False, indent=2) if profile_data else "(no profile data)"
+
+        if _detect_cjk(demand_text):
+            system = SYSTEM_PROMPT_ZH.format(profile_data=profile_str)
+            messages = [
+                {"role": "user", "content": f"需求：{demand_text}\n请给出你的回应。"}
+            ]
+        else:
+            system = SYSTEM_PROMPT_EN.format(profile_data=profile_str)
+            messages = [
+                {"role": "user", "content": f"Demand: {demand_text}\nPlease give your response."}
+            ]
+        return system, messages
+
+    def _validate_output(self, raw_output: str, context: dict[str, Any]) -> dict[str, Any]:
+        cleaned = self._strip_code_fence(raw_output)
+        try:
+            parsed = json.loads(cleaned)
+            content = parsed.get("content", "")
+            capabilities = parsed.get("capabilities", [])
+            confidence = parsed.get("confidence", 0.0)
+        except (json.JSONDecodeError, TypeError):
+            content = cleaned.strip()
+            capabilities = []
+            confidence = 0.5
+
+        if not content:
+            raise SkillError("OfferGenerationSkill: content is empty")
+
+        try:
+            confidence = float(confidence)
+        except (TypeError, ValueError):
+            confidence = 0.5
+        confidence = max(0.0, min(1.0, confidence))
+
+        if not isinstance(capabilities, list):
+            capabilities = []
+        capabilities = [str(c) for c in capabilities]
+
+        return {
+            "content": content,
+            "capabilities": capabilities,
+            "confidence": confidence,
+        }

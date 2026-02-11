@@ -41,17 +41,58 @@ const tools = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'save_to_notes',
+      description: '将内容保存到用户的灵感笔记中。当用户明确要求保存时使用此工具。',
+      parameters: {
+        type: 'object',
+        properties: {
+          agentId: {
+            type: 'string',
+            description: '用户的 Agent ID',
+          },
+          title: {
+            type: 'string',
+            description: '笔记标题',
+          },
+          content: {
+            type: 'string',
+            description: '笔记内容',
+          },
+          tags: {
+            type: 'array',
+            description: '笔记标签，如 ["expert", "设计", "方案"]',
+            items: { type: 'string' }
+          },
+        },
+        required: ['agentId', 'title', 'content'],
+      },
+    },
+  },
 ]
 
 export async function POST(req: Request) {
   try {
-    const { messages, userId } = await req.json()
+    const { messages, userId, agentId, isExpertChat } = await req.json()
 
     // 1. 获取用户 Agent 上下文 (如果提供了 userId)
     let systemPrompt = `你是一个智能助手，运行在 AgentCraft 平台上。
 AgentCraft 是一个 AI Agent 技能交易与创新平台，支持技能买卖、租赁和通过"美帝奇效应"进行跨域技能组合。
 你的任务是帮助用户了解平台功能、推荐技能、解答疑问。
 请用简短、热情、专业的语气回答。`
+
+    if (isExpertChat) {
+      systemPrompt = `你是专家，拥有丰富的专业知识和实践经验。你的职责是：
+1. 用专业、友好、具体的语气回答用户的问题
+2. 提供可执行的建议和解决方案
+3. **重要：当用户要求保存内容到笔记时，请使用 save_to_notes 工具自动保存**
+4. **重要：保存成功后，请明确告知用户"已保存到灵感笔记"**
+5. **重要：请使用中文回答，不要使用英文**
+
+当你生成了有价值的设计方案、建议或架构时，可以主动询问用户是否需要保存到灵感笔记中。`
+    }
 
     if (userId) {
       // 可以在这里预加载一些用户数据放入 System Prompt，或者完全依赖工具调用
@@ -64,8 +105,10 @@ AgentCraft 是一个 AI Agent 技能交易与创新平台，支持技能买卖�
         { role: 'system', content: systemPrompt },
         ...messages,
       ],
-      tools: tools as any,
-      tool_choice: 'auto',
+      tools: isExpertChat 
+        ? [tools.find(t => t.function.name === 'save_to_notes')] as any
+        : tools as any,
+      tool_choice: isExpertChat ? 'auto' : 'auto',
     })
 
     const responseMessage = response.choices[0].message
@@ -104,8 +147,25 @@ AgentCraft 是一个 AI Agent 技能交易与创新平台，支持技能买卖�
             .select('name, level, coins, credit_score, agent_skills(skill:skills(name))')
             .eq('user_id', functionArgs.userId) // 假设传入的是 user_id
             .single()
-            
+
           functionResult = JSON.stringify(data)
+        } else if (functionName === 'save_to_notes') {
+          const { data, error } = await supabaseAdmin
+            .from('notes')
+            .insert({
+              agent_id: agentId || userId,
+              title: functionArgs.title,
+              content: functionArgs.content,
+              tags: functionArgs.tags || ['expert'],
+            })
+            .select()
+            .single()
+
+          if (error) {
+            functionResult = JSON.stringify({ success: false, error: error.message })
+          } else {
+            functionResult = JSON.stringify({ success: true, noteId: data.id })
+          }
         }
 
         newMessages.push({
